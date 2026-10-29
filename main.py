@@ -10,6 +10,7 @@ Ejecuta de principio a fin:
 """
 
 import argparse
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import platform
 import sys
 import matplotlib
@@ -42,7 +43,19 @@ def print_environment_info() -> None:
     print("=" * 78)
 
 
-def run_all_experiments(force_rerun: bool = False) -> dict:
+def _worker_run(args_tuple):
+    n_terms, seed, force_rerun = args_tuple
+    rec = run_single_ga_experiment(
+        n_terms=n_terms,
+        seed=seed,
+        sol_per_pop=SOL_PER_POP,
+        num_generations=NUM_GENERATIONS,
+        force_rerun=force_rerun,
+    )
+    return n_terms, seed, rec
+
+
+def run_all_experiments(force_rerun: bool = False, parallel: bool = True) -> dict:
     print_environment_info()
 
     print("\n[1/4] Ejecutando pruebas unitarias de verificación matemática y técnica...")
@@ -59,7 +72,7 @@ def run_all_experiments(force_rerun: bool = False) -> dict:
         m = b_rec["metrics"]
         print(
             f"  -> Baseline {n_terms} términos ({b_rec['num_active_rules']} reglas): "
-            f"Fitness={m['fitness']:.4f} | OS+={m['OS_pos']:.4f}, OS-={m['OS_neg']:.4f} | "
+            f"Fitness={m['fitness']:.4f} | OS+={m['OS_pos']:.4f}%, OS-={m['OS_neg']:.4f}% | "
             f"SSE+={m['SSE_pos']:.4f}, SSE-={m['SSE_neg']:.4f} | "
             f"tr+={m['tr_pos']:.2f}s, tr-={m['tr_neg']:.2f}s | "
             f"ts+={m['ts_pos']:.2f}s, ts-={m['ts_neg']:.2f}s | "
@@ -71,28 +84,59 @@ def run_all_experiments(force_rerun: bool = False) -> dict:
         f"(sol_per_pop={SOL_PER_POP}, num_generations={NUM_GENERATIONS}, 5 semillas)..."
     )
     runs_by_terms = {5: [], 7: [], 9: []}
-    for n_terms in [5, 7, 9]:
-        print(f"\n--- Optimizando Controlador de {n_terms} términos lingüísticos ---")
-        for run_idx, seed in enumerate(EXPERIMENT_SEEDS, start=1):
-            rec = run_single_ga_experiment(
-                n_terms=n_terms,
-                seed=seed,
-                sol_per_pop=SOL_PER_POP,
-                num_generations=NUM_GENERATIONS,
-                force_rerun=force_rerun,
-            )
-            runs_by_terms[n_terms].append(rec)
-            m = rec["metrics"]
-            print(
-                f"  Corrida {run_idx}/5 (semilla={seed:4d}): "
-                f"Fitness={m['fitness']:.4f} | OS+={m['OS_pos']:.4f}, OS-={m['OS_neg']:.4f} | "
-                f"SSE+={m['SSE_pos']:.4f}, SSE-={m['SSE_neg']:.4f} | "
-                f"tr+={m['tr_pos']:.2f}s, tr-={m['tr_neg']:.2f}s | "
-                f"ts+={m['ts_pos']:.2f}s, ts-={m['ts_neg']:.2f}s | "
-                f"Reglas={rec['num_active_rules']}/{rec['total_possible_rules']} | "
-                f"Opt={rec['optimization_time_s']:.2f}s | Inf={rec['inference_time_ms']:.3f}ms | "
-                f"Mem={rec['memory_mb']:.3f}MB"
-            )
+
+    if parallel and force_rerun:
+        tasks = [
+            (n_terms, seed, force_rerun)
+            for n_terms in [5, 7, 9]
+            for seed in EXPERIMENT_SEEDS
+        ]
+        results_map = {}
+        with ProcessPoolExecutor(max_workers=min(15, len(tasks))) as executor:
+            future_to_task = {executor.submit(_worker_run, t): t for t in tasks}
+            for fut in as_completed(future_to_task):
+                n_t, sd, rec = fut.result()
+                results_map[(n_t, sd)] = rec
+
+        for n_terms in [5, 7, 9]:
+            print(f"\n--- Resultados Controlador de {n_terms} términos lingüísticos ---")
+            for run_idx, seed in enumerate(EXPERIMENT_SEEDS, start=1):
+                rec = results_map[(n_terms, seed)]
+                runs_by_terms[n_terms].append(rec)
+                m = rec["metrics"]
+                print(
+                    f"  Corrida {run_idx}/5 (semilla={seed:4d}): "
+                    f"Fitness={m['fitness']:.4f} | OS+={m['OS_pos']:.4f}%, OS-={m['OS_neg']:.4f}% | "
+                    f"SSE+={m['SSE_pos']:.4f}, SSE-={m['SSE_neg']:.4f} | "
+                    f"tr+={m['tr_pos']:.2f}s, tr-={m['tr_neg']:.2f}s | "
+                    f"ts+={m['ts_pos']:.2f}s, ts-={m['ts_neg']:.2f}s | "
+                    f"Reglas={rec['num_active_rules']}/{rec['total_possible_rules']} | "
+                    f"Opt={rec['optimization_time_s']:.2f}s | Inf={rec['inference_time_ms']:.3f}ms | "
+                    f"Mem={rec['memory_mb']:.3f}MB"
+                )
+    else:
+        for n_terms in [5, 7, 9]:
+            print(f"\n--- Optimizando Controlador de {n_terms} términos lingüísticos ---")
+            for run_idx, seed in enumerate(EXPERIMENT_SEEDS, start=1):
+                rec = run_single_ga_experiment(
+                    n_terms=n_terms,
+                    seed=seed,
+                    sol_per_pop=SOL_PER_POP,
+                    num_generations=NUM_GENERATIONS,
+                    force_rerun=force_rerun,
+                )
+                runs_by_terms[n_terms].append(rec)
+                m = rec["metrics"]
+                print(
+                    f"  Corrida {run_idx}/5 (semilla={seed:4d}): "
+                    f"Fitness={m['fitness']:.4f} | OS+={m['OS_pos']:.4f}%, OS-={m['OS_neg']:.4f}% | "
+                    f"SSE+={m['SSE_pos']:.4f}, SSE-={m['SSE_neg']:.4f} | "
+                    f"tr+={m['tr_pos']:.2f}s, tr-={m['tr_neg']:.2f}s | "
+                    f"ts+={m['ts_pos']:.2f}s, ts-={m['ts_neg']:.2f}s | "
+                    f"Reglas={rec['num_active_rules']}/{rec['total_possible_rules']} | "
+                    f"Opt={rec['optimization_time_s']:.2f}s | Inf={rec['inference_time_ms']:.3f}ms | "
+                    f"Mem={rec['memory_mb']:.3f}MB"
+                )
 
     print("\n[4/4] Generando tablas estadísticas y figuras científicas...")
     summary = summarize_experiments(baselines, runs_by_terms)
@@ -123,4 +167,3 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     run_all_experiments(force_rerun=args.force)
-

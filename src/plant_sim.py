@@ -1,14 +1,14 @@
-"""Módulo de la planta del servomotor, señal de referencia y simulación con lsim.
+"""Módulo de la planta del servomotor, señal de referencia y simulación estricta con lsim.
 
 Cumple estrictamente las restricciones de las Partes 1 y 4 de `Parcial 2.pdf`:
 - Planta definida exclusivamente con `scipy.signal.lti`.
-- Respuesta temporal obtenida exclusivamente mediante `scipy.signal.lsim`.
+- Respuesta temporal obtenida exclusivamente mediante `scipy.signal.lsim`
+  (sin métodos de discretización manual ni integradores externos).
 - Horizonte temporal exacto de 200 s, sin ruido ni perturbaciones.
 """
 
 from typing import Callable, Dict, Tuple
 import numpy as np
-from scipy.linalg import expm
 from scipy.signal import lti, lsim, square
 
 from src.config import (
@@ -49,45 +49,31 @@ def create_time_and_reference(
 
 
 class ClosedLoopPlantSimulator:
-    """Acoplador de lazo cerrado para la planta LTI utilizando `scipy.signal.lsim`.
+    """Simulador en lazo cerrado que utiliza estrictamente `scipy.signal.lsim`.
 
-    Para evaluar el lazo cerrado causalmente paso a paso sin violar la restricción
-    de utilizar `scipy.signal.lsim` (sin usar odeint/solve_ivp), se propaga el
-    estado lineal exacto de `G` entre muestras consecutivas para obtener `u[k]`
-    a partir del controlador difuso y, una vez obtenido el vector completo de
-    voltaje `u`, se ejecuta obligatoriamente:
+    En cada instante de muestreo k, el controlador difuso calcula el voltaje u[k]
+    a partir del error e[k] y del cambio del error de[k], y la evolución del estado
+    continuo hacia el siguiente instante se obtiene invocando exclusivamente
+    `scipy.signal.lsim` con condición inicial X0 igual al estado actual del servomotor.
+    Al completar el horizonte de 200 s, se ejecuta:
         `tout, theta, xout = lsim(G, U=u, T=t, X0=x0)`
-    garantizando que toda trayectoria `theta(t)` reportada y evaluada provenga
-    exactamente de `scipy.signal.lsim`.
+    cumpliendo de forma literal y estricta la especificación del proyecto.
     """
 
     def __init__(self, dt: float = DT, t_sim: float = T_SIM) -> None:
         self.dt = float(dt)
         self.t_sim = float(t_sim)
         self.G = create_plant()
+        # Representación LTI de espacio de estados interna de SciPy para invocar lsim
+        self.G_ss = self.G.to_ss()
         self.t, self.r = create_time_and_reference(dt=self.dt, t_sim=self.t_sim)
         self.x0 = np.array(X0, dtype=float)
-
-        # Matrices de espacio de estados internas de G = lti([0.5], [1, 13.6667, 23.3487, 0])
-        ss = self.G.to_ss()
-        self.A = np.asarray(ss.A, dtype=float)
-        self.B = np.asarray(ss.B, dtype=float).reshape(-1)
-        self.C = np.asarray(ss.C, dtype=float).reshape(-1)
-        self.D = float(np.asarray(ss.D).squeeze())
-
-        # Matriz de transición exacta de un paso dt (misma exponencial matricial que usa lsim)
-        n_states = self.A.shape[0]
-        aug = np.zeros((n_states + 1, n_states + 1), dtype=float)
-        aug[:n_states, :n_states] = self.A * self.dt
-        aug[:n_states, n_states] = self.B * self.dt
-        exp_aug = expm(aug)
-        self.Ad = exp_aug[:n_states, :n_states]
-        self.Bd = exp_aug[:n_states, n_states]
+        self.t_step = np.array([0.0, self.dt], dtype=float)
 
     def simulate(
         self, control_law: Callable[[float, float], float]
     ) -> Dict[str, np.ndarray]:
-        """Simula el sistema en lazo cerrado durante los 200 s completos con `lsim`.
+        """Simula el sistema en lazo cerrado durante los 200 s usando exclusivamente `lsim`.
 
         Parámetros
         ----------
@@ -101,24 +87,20 @@ class ClosedLoopPlantSimulator:
         """
         n_steps = len(self.t)
         u = np.zeros(n_steps, dtype=float)
-        x = self.x0.copy()
+        u_step = np.zeros(2, dtype=float)
+        x_curr = self.x0.copy()
+        theta_k = 0.0
         prev_e = 0.0
 
-        c0, c1, c2 = float(self.C[0]), float(self.C[1]), float(self.C[2])
-        a00, a01, a02 = float(self.Ad[0, 0]), float(self.Ad[0, 1]), float(self.Ad[0, 2])
-        a10, a11, a12 = float(self.Ad[1, 0]), float(self.Ad[1, 1]), float(self.Ad[1, 2])
-        a20, a21, a22 = float(self.Ad[2, 0]), float(self.Ad[2, 1]), float(self.Ad[2, 2])
-        b0, b1, b2 = float(self.Bd[0]), float(self.Bd[1]), float(self.Bd[2])
-        x0_s, x1_s, x2_s = float(self.x0[0]), float(self.x0[1]), float(self.x0[2])
-        prev_e = 0.0
         inv_dt = 1.0 / self.dt
         r_list = self.r.tolist()
         e_min, e_max = float(ERROR_MIN), float(ERROR_MAX)
         de_min, de_max = float(DERROR_MIN), float(DERROR_MAX)
         v_min, v_max = float(VOLTAGE_MIN), float(VOLTAGE_MAX)
+        t_step = self.t_step
+        g_ss = self.G_ss
 
         for k in range(n_steps):
-            theta_k = c0 * x0_s + c1 * x1_s + c2 * x2_s
             e_k = r_list[k] - theta_k
             de_k = 0.0 if k == 0 else (e_k - prev_e) * inv_dt
             prev_e = e_k
@@ -135,10 +117,14 @@ class ClosedLoopPlantSimulator:
             u[k] = v_k
 
             if k < n_steps - 1:
-                nx0 = a00 * x0_s + a01 * x1_s + a02 * x2_s + b0 * v_k
-                nx1 = a10 * x0_s + a11 * x1_s + a12 * x2_s + b1 * v_k
-                nx2 = a20 * x0_s + a21 * x1_s + a22 * x2_s + b2 * v_k
-                x0_s, x1_s, x2_s = nx0, nx1, nx2
+                u_step[0] = v_k
+                u_step[1] = v_k
+                # Propagación del estado continuo mediante scipy.signal.lsim exclusivamente
+                _, y_step, x_step = lsim(
+                    g_ss, U=u_step, T=t_step, X0=x_curr, interp=False
+                )
+                theta_k = float(y_step[-1])
+                x_curr = x_step[-1]
 
         # Llamada obligatoria a scipy.signal.lsim sobre el horizonte completo de 200 s
         tout, theta, xout = lsim(self.G, U=u, T=self.t, X0=self.x0)

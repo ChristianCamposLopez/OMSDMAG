@@ -125,8 +125,9 @@ class MamdaniFuzzyController:
     def _interp_mfs(x: float, u_min: float, u_max: float, mfs: np.ndarray) -> np.ndarray:
         """Interpola linealmente sobre la malla de universo (idéntico a skfuzzy.interp_membership)."""
         n_pts = mfs.shape[1]
-        pos = (x - u_min) / (u_max - u_min) * (n_pts - 1)
-        idx = int(np.clip(np.floor(pos), 0, n_pts - 2))
+        # Acotar a [1, n_pts - 2] para evitar caída artificial a 0 en el nodo extremo donde a_0=u_min o c_{N-1}=u_max
+        pos = float(np.clip((x - u_min) / (u_max - u_min) * (n_pts - 1), 1.0, n_pts - 2.0))
+        idx = int(np.clip(np.floor(pos), 1, n_pts - 2))
         frac = float(np.clip(pos - idx, 0.0, 1.0))
         return (1.0 - frac) * mfs[:, idx] + frac * mfs[:, idx + 1]
 
@@ -155,8 +156,14 @@ class MamdaniFuzzyController:
 
     def compute_with_skfuzzy_sim(self, e_val: float, de_val: float) -> float:
         """Ejecuta directamente `controller.compute()` sobre la instancia de `skfuzzy.control`."""
-        self.simulation.input["error"] = float(np.clip(e_val, ERROR_MIN, ERROR_MAX))
-        self.simulation.input["derror"] = float(np.clip(de_val, DERROR_MIN, DERROR_MAX))
+        du_e = (ERROR_MAX - ERROR_MIN) / (UNIVERSE_RESOLUTION - 1.0)
+        du_de = (DERROR_MAX - DERROR_MIN) / (UNIVERSE_RESOLUTION - 1.0)
+        self.simulation.input["error"] = float(
+            np.clip(e_val, ERROR_MIN + du_e, ERROR_MAX - du_e)
+        )
+        self.simulation.input["derror"] = float(
+            np.clip(de_val, DERROR_MIN + du_de, DERROR_MAX - du_de)
+        )
         try:
             self.simulation.compute()
             return float(self.simulation.output["voltage"])

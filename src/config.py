@@ -13,7 +13,7 @@ PLANT_DEN = [1.0, 13.6667, 23.3487, 0.0]
 
 # 2. Parámetros obligatorios de simulación (Parcial 2.pdf, págs. 3-4, 12)
 T_SIM = 200.0          # Horizonte temporal exacto [s]
-DT = 0.05              # Paso temporal [s] (frecuencia de muestreo: 20 Hz, 4001 muestras)
+DT = 0.10              # Paso temporal [s] (frecuencia de muestreo: 10 Hz, 2001 muestras en [0, 200] s)
 X0 = [0.0, 0.0, 0.0]   # Condiciones iniciales obligatorias
 REF_PERIOD = 100.0     # Período de la onda cuadrada [s]
 REF_AMPLITUDE = 1.0    # Amplitud ±1 [rad]

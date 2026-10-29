@@ -13,13 +13,12 @@ import json
 import os
 import random
 import time
-from typing import Dict, List
+from typing import Dict
 import numpy as np
 import pygad
 
 from src.chromosome import (
     create_baseline_chromosome,
-    decode_chromosome,
     get_gene_space,
     get_num_genes,
 )
@@ -30,7 +29,6 @@ from src.config import (
     DERROR_MIN,
     ERROR_MAX,
     ERROR_MIN,
-    EXPERIMENT_SEEDS,
     KEEP_ELITISM,
     MUTATION_PROBABILITY,
     MUTATION_TYPE,
@@ -63,7 +61,6 @@ def generate_initial_population(
         indiv = base.copy()
 
         # Factores de concentración hacia el origen (mayor ganancia cerca de error=0)
-        # que permiten al GA explorar respuestas más rápidas sin perder estabilidad
         alpha_e = float(rng.uniform(0.35, 1.15))
         alpha_de = float(rng.uniform(0.40, 1.20))
         alpha_v = float(rng.uniform(0.55, 1.35))
@@ -76,24 +73,28 @@ def generate_initial_population(
             ]
         ):
             offset = var_idx * block
-            # Distribución no lineal simétrica/asimétrica de centros en [-1, 1]
-            u_norm = np.linspace(-1.0, 1.0, n_terms)
+            span = float(u_max - u_min)
+            eps = 0.015 * span / max(n_terms, 1)
+
+            # Distribución no lineal simétrica/asimétrica de centros en (-1, 1)
+            u_norm = np.linspace(-0.97, 0.97, n_terms)
             warped = np.sign(u_norm) * (np.abs(u_norm) ** alpha)
             jitter = rng.normal(0.0, 0.08, size=n_terms)
             jitter[0] = 0.0
             jitter[-1] = 0.0
-            warped = np.clip(warped + jitter, -1.0, 1.0)
+            warped = np.clip(warped + jitter, -0.97, 0.97)
             warped = np.sort(warped)
-            centers = u_min + (warped + 1.0) * 0.5 * (u_max - u_min)
+            centers = u_min + (warped + 1.0) * 0.5 * span
+            centers[0] = max(centers[0], float(u_min) + eps)
+            centers[-1] = min(centers[-1], float(u_max) - eps)
             indiv[offset : offset + n_terms] = centers
 
-            # Anchuras y solapamientos en [0.30, 1.70]
+            # Anchuras y solapamientos en [0.35, 1.65]
             indiv[offset + n_terms : offset + block] = rng.uniform(
                 0.35, 1.65, size=2 * n_terms
             )
 
         # Para las variables de salida (voltage), ensanchar los conjuntos extremos en algunos individuos
-        # para desplazar sus centroides hacia +-8.18 V y acelerar el tiempo de subida
         if idx % 2 == 0:
             v_off = 2 * block
             indiv[v_off + n_terms] = float(rng.uniform(1.2, 1.75))
@@ -114,12 +115,15 @@ def generate_initial_population(
         # Consecuentes: base PD con mutaciones locales hacia términos más enérgicos
         base_cons = base[cons_start : cons_start + n_rules].copy()
         if idx > 0:
-            # Empujar consecuentes hacia los extremos en parte de la población para reducir tr
             gain_shift = np.sign(base_cons - (n_terms - 1) / 2.0) * rng.choice(
                 [0.0, 1.0], size=n_rules, p=[0.45, 0.55]
             )
-            noise_shift = rng.choice([-1.0, 0.0, 1.0], size=n_rules, p=[0.12, 0.76, 0.12])
-            new_cons = np.clip(base_cons + gain_shift + noise_shift, 0.0, float(n_terms - 1))
+            noise_shift = rng.choice(
+                [-1.0, 0.0, 1.0], size=n_rules, p=[0.12, 0.76, 0.12]
+            )
+            new_cons = np.clip(
+                base_cons + gain_shift + noise_shift, 0.0, float(n_terms - 1)
+            )
             new_cons[mid_rule] = float(n_terms // 2)
             indiv[cons_start : cons_start + n_rules] = new_cons
 
@@ -142,7 +146,7 @@ def evaluate_baseline_controller(
         build_control_system_graph=True,
     )
 
-    # Simulación completa de 200 s usando la inferencia Mamdani exacta punto a punto
+    # Simulación completa de 200 s usando la inferencia Mamdani exacta y scipy.signal.lsim
     sim_res = simulator.simulate(ctrl_obj.compute_crisp)
     metrics = evaluate_controller_response(sim_res["t"], sim_res["theta"])
 
@@ -222,7 +226,7 @@ def run_single_ga_experiment(
         if key in eval_cache:
             return eval_cache[key]
 
-        # 1. Construir el sistema difuso y decodificar/reparar el cromosoma
+        # 1. Construir el sistema difuso y decodificar/reparar el cromosoma (con a < b < c)
         ctrl_fast = MamdaniFuzzyController(
             n_terms=n_terms,
             chromosome=solution,
@@ -231,10 +235,10 @@ def run_single_ga_experiment(
         )
         law = ctrl_fast.build_lookup_control_law(grid_size=65)
 
-        # 2. Simular los 200 segundos completos con scipy.signal.lsim
+        # 2. Simular los 200 segundos completos estrictamente con scipy.signal.lsim
         sim_out = simulator.simulate(law)
 
-        # 3, 4 y 5. Calcular métricas de rendimiento, penalizaciones q y función fitness (Ec. 12 y 13)
+        # 3, 4 y 5. Calcular métricas de rendimiento (OS en %), penalizaciones q y fitness (Ec. 12 y 13)
         res = evaluate_controller_response(sim_out["t"], sim_out["theta"])
         fit_val = float(res["fitness"]) - float(ctrl_fast.decoded["repair_penalty"])
         fit_val = max(1e-6, fit_val)
@@ -278,7 +282,7 @@ def run_single_ga_experiment(
         build_control_system_graph=True,
     )
 
-    # Evaluación final exacta sobre los 200 s completos
+    # Evaluación final exacta sobre los 200 s completos con scipy.signal.lsim
     final_sim = simulator.simulate(best_ctrl.compute_crisp)
     final_metrics = evaluate_controller_response(final_sim["t"], final_sim["theta"])
 
@@ -329,4 +333,3 @@ def run_single_ga_experiment(
         json.dump(record, f, indent=2, ensure_ascii=False)
 
     return record
-

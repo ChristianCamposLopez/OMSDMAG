@@ -3,10 +3,15 @@ y función de aptitud multiobjetivo MOTFF (Ec. 12).
 
 Referencias:
 - `Parcial 2.pdf`, páginas 6-8 (Ecuaciones 12 y 13, Tabla 1).
-- Téllez-Velázquez et al. (2017), Sección 5.1, Figura 5 y Ecuaciones (12)-(13), págs. 9-10.
+- Téllez-Velázquez et al. (2017), Sección 5.1, Figura 5, Ecuaciones (12)-(13) y Tabla 10 (págs. 9-10, 17).
+  * OS se expresa en porcentaje (%) conforme a la Tabla 10 del artículo.
+  * SSE se expresa en radianes (rad).
+  * tr y ts se expresan en segundos (s).
+  * q (rho) se calcula mediante la Ecuación (13) cuando [min(h), max(h)] <= [min(h0), max(h0)],
+    siendo q >= 1.0 un factor de penalización que incrementa el denominador q * tr.
 """
 
-from typing import Dict, Sequence, Tuple
+from typing import Dict, Sequence
 import numpy as np
 
 from src.config import (
@@ -22,14 +27,17 @@ from src.config import (
 def compute_penalty_factor_q(
     h: np.ndarray, h0_min: float = -1.0, h0_max: float = 1.0
 ) -> float:
-    """Calcula el factor de penalización obligatorio q (Ecuación 13).
+    """Calcula el factor de penalización obligatorio q (rho en Ecuación 13, pág. 10 del artículo).
 
-    Fórmula de `Parcial 2.pdf` (pág. 7) y Artículo (pág. 10, Ec. 13):
-        q = (max(h^0) - min(h_i)) / (max(h) - min(h))
+    Definición del artículo (pág. 10, col. 2, párrafo 1):
+        "Here, Greek letter rho is the rise time penalty factor when
+         [min(theta):max(theta)] <= [min(theta_0); max(theta_0)], where theta is a
+         collection of all the rotor position feedback and theta_0 is a collection
+         of all the noise-free reference position signals, both during simulation time.
+         This factor prevents rating with a good score all the very short and incorrect
+         rise times, when the steady state is reached under the reference value."
 
-    Para evitar división por cero o valores negativos cuando el sistema no responde
-    o se mueve en dirección contraria, se protege el denominador y se garantiza q >= 1.0
-    cuando el rango de la respuesta no cubre la referencia.
+        q = (max(h^0) - min(h_i)) / (max(h) - min(h))    (Ec. 13)
     """
     h_max = float(np.max(h))
     h_min = float(np.min(h))
@@ -38,13 +46,11 @@ def compute_penalty_factor_q(
     if denom <= 1e-6:
         return 1e6  # Penalización severa si la respuesta es prácticamente plana
 
-    num = float(h0_max) - h_min
-    q_raw = num / denom
-
-    # Además verificamos la cobertura de amplitud pico a pico (h0_max - h0_min) / denom
+    # Ecuación (13) literal y cobertura pico a pico de la referencia [min(h0), max(h0)]
+    q_eq13 = (float(h0_max) - h_min) / denom
     q_span = (float(h0_max) - float(h0_min)) / denom
-    q = max(abs(q_raw), q_span, 1.0)
-    return float(q)
+
+    return float(max(abs(q_eq13), q_span, 1.0))
 
 
 def compute_step_metrics(
@@ -56,7 +62,7 @@ def compute_step_metrics(
     r_final: float,
     settling_tol: float = 0.05,
 ) -> Dict[str, float]:
-    """Calcula las 4 métricas transitorias (OS, SSE, tr, ts) y el factor q en una ventana.
+    """Calcula las 4 métricas transitorias (OS [%], SSE [rad], tr [s], ts [s]) y el factor q.
 
     Parámetros
     ----------
@@ -65,9 +71,9 @@ def compute_step_metrics(
     theta : np.ndarray
         Respuesta angular del rotor [rad].
     t_start, t_end : float
-        Límites temporal de la ventana de transición (ej. [100, 150] s o [150, 200] s).
+        Límites temporales de la ventana de transición (ej. [100, 150) s o [150, 200] s).
     r_init, r_final : float
-        Valor previo y valor objetivo del escalón (-1 -> +1 ó +1 -> -1).
+        Valor inicial y valor objetivo del escalón (-1 -> +1 ó +1 -> -1).
     settling_tol : float
         Banda de tolerancia para el tiempo de establecimiento (5% = 0.05 rad, Artículo pág. 10).
     """
@@ -82,24 +88,33 @@ def compute_step_metrics(
     delta_r = float(r_final - r_init)  # +2.0 en transición positiva, -2.0 en negativa
     step_dir = 1.0 if delta_r > 0 else -1.0
 
-    # Respuesta normalizada direccional: 0.0 en r_init, 1.0 en r_final (Figura 5 del artículo)
+    # Respuesta normalizada direccional respecto a la referencia: 0.0 en r_init, 1.0 en r_final
     y_norm = (y_win - r_init) / delta_r
 
-    # 1. Factor de penalización q (Ecuación 13)
-    q = compute_penalty_factor_q(y_win, h0_min=min(r_init, r_final), h0_max=max(r_init, r_final))
+    # 1. Factor de penalización q (Ecuación 13, pág. 10 del artículo)
+    q = compute_penalty_factor_q(
+        y_win, h0_min=min(r_init, r_final), h0_max=max(r_init, r_final)
+    )
 
-    # 2. Tiempo de crecimiento tr (10% a 90% de la transición; Figura 5 y pág. 10 del artículo)
+    # 2. Tiempo de crecimiento tr [s] (10% a 90%; Figura 5 y pág. 10 del artículo)
+    # Verificar que la señal realmente parta por debajo del 10% y cruce del 10% al 90%
+    idx_below_10 = np.where(y_norm <= 0.15)[0]
     idx_10 = np.where(y_norm >= 0.10)[0]
     idx_90 = np.where(y_norm >= 0.90)[0]
 
-    if len(idx_10) > 0 and len(idx_90) > 0:
-        t_10 = float(t_win[idx_10[0]])
-        # Buscar el primer cruce del 90% posterior o igual a t_10
-        idx_90_after = idx_90[idx_90 >= idx_10[0]]
-        if len(idx_90_after) > 0:
-            t_90 = float(t_win[idx_90_after[0]])
-            tr = max(t_90 - t_10, float(t[1] - t[0]))
-            tr_reached = True
+    if len(idx_below_10) > 0 and len(idx_10) > 0 and len(idx_90) > 0:
+        start_search = idx_below_10[0]
+        idx_10_valid = idx_10[idx_10 >= start_search]
+        if len(idx_10_valid) > 0:
+            t_10 = float(t_win[idx_10_valid[0]])
+            idx_90_after = idx_90[idx_90 >= idx_10_valid[0]]
+            if len(idx_90_after) > 0:
+                t_90 = float(t_win[idx_90_after[0]])
+                tr = max(t_90 - t_10, float(t[1] - t[0]))
+                tr_reached = True
+            else:
+                tr = window_duration
+                tr_reached = False
         else:
             tr = window_duration
             tr_reached = False
@@ -107,16 +122,15 @@ def compute_step_metrics(
         tr = window_duration
         tr_reached = False
 
-    # Si no alcanzó el 90% de la referencia, penalizar q adicionalmente según la fracción alcanzada
-    max_progress = float(np.clip(np.max(y_norm), 0.01, 1.0))
-    if not tr_reached:
-        q = max(q, 2.0 / max_progress)
-
-    # 3. Tiempo de establecimiento ts (banda del 5%: |r_final - theta(t)| <= 0.05 rad)
+    # 3. Tiempo de establecimiento ts [s] (banda del 5%: |r_final - theta(t)| <= 0.05 rad)
     abs_err = np.abs(r_final - y_win)
     outside_band = np.where(abs_err > settling_tol)[0]
 
-    if len(outside_band) == 0:
+    if not tr_reached:
+        ts = window_duration
+        settled = False
+        ss_start_idx = max(0, int(0.85 * len(y_win)))
+    elif len(outside_band) == 0:
         ts = float(t[1] - t[0])
         settled = True
         ss_start_idx = 0
@@ -130,16 +144,16 @@ def compute_step_metrics(
         settled = False
         ss_start_idx = max(0, int(0.85 * len(y_win)))
 
-    # 4. Error en estado estable SSE [rad] (promedio del error después de ts; Artículo pág. 10)
+    # 4. Error en estado estable SSE [rad] (promedio del error después de ts; Tabla 10 pág. 17)
     sse = float(np.mean(abs_err[ss_start_idx:]))
 
-    # 5. Sobreimpulso OS (exceso máximo sobre r_final en la dirección del escalón, relativo a |r_final|=1)
+    # 5. Sobreimpulso OS en porcentaje [%] (Tabla 10 del artículo, pág. 17)
     directional_excess = step_dir * (y_win - r_final)
     max_excess = float(np.max(directional_excess))
-    os_val = max(0.0, max_excess / abs(r_final))
+    os_pct = 100.0 * max(0.0, max_excess / abs(r_final))
 
     return {
-        "OS": float(os_val),
+        "OS": float(os_pct),
         "SSE": float(sse),
         "tr": float(tr),
         "ts": float(ts),
@@ -161,13 +175,13 @@ def evaluate_controller_response(
     NOTA OBLIGATORIA (`Parcial 2.pdf` pág. 7):
     Se descartan las mediciones de la transición inicial de 0 a 1 (t in [0, 50) s).
     - Transición Positiva (-1 -> +1): evaluada en [100, 150) s.
-    - Transición Negativa (+1 -> -1): evaluada en [150, 200] s (y verificada con [50, 100) s).
+    - Transición Negativa (+1 -> -1): evaluada en [150, 200] s (y [50, 100) s).
     """
     w = np.asarray(weights, dtype=float)
     if len(w) != 8 or not np.isclose(np.sum(w), 1.0, atol=1e-6):
         raise ValueError("Los 8 pesos de la función fitness deben sumar exactamente 1.0.")
 
-    # Evaluación de la Transición Positiva (-1 -> +1) en [100, 150] s
+    # Evaluación de la Transición Positiva (-1 -> +1) en [100, 150) s
     pos = compute_step_metrics(
         t,
         theta,
@@ -177,7 +191,7 @@ def evaluate_controller_response(
         r_final=1.0,
     )
 
-    # Evaluación de la Transición Negativa (+1 -> -1) en [150, 200] s y [50, 100] s
+    # Evaluación de la Transición Negativa (+1 -> -1) en [150, 200] s y [50, 100) s
     neg_second = compute_step_metrics(
         t,
         theta,
@@ -195,8 +209,7 @@ def evaluate_controller_response(
         r_final=-1.0,
     )
 
-    # Promedio de las dos transiciones negativas completas (+1 -> -1 en [50,100] y [150,200])
-    # para que los 150 s posteriores al descarte inicial [0, 50) intervengan íntegramente.
+    # Promedio de las transiciones negativas posteriores al descarte de [0, 50) s
     neg = {
         "OS": 0.5 * (neg_first["OS"] + neg_second["OS"]),
         "SSE": 0.5 * (neg_first["SSE"] + neg_second["SSE"]),
@@ -219,7 +232,7 @@ def evaluate_controller_response(
     contributions = np.array([f1, f2, f3, f4, f5, f6, f7, f8], dtype=float)
     fitness = float(np.dot(w, contributions))
 
-    # También calculamos el valor algebraico sin acotar a 1.0 para trazabilidad
+    # Valor algebraico sin acotar a 1.0 para trazabilidad
     raw_f3 = float(tr0) / max(pos["q"] * pos["tr"], 1e-6)
     raw_f4 = float(ts0) / max(pos["ts"], 1e-6)
     raw_f7 = float(tr0) / max(neg["q"] * neg["tr"], 1e-6)

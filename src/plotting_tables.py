@@ -140,8 +140,8 @@ def _build_mandatory_markdown_table(summary: Dict[int, Dict[str, object]]) -> Li
         "| :--- | :---: | :---: | :---: |",
         f"| **Fitness promedio** (5 corridas) | {s5['metrics_stats']['fitness']['mean']:.4f} ± {s5['metrics_stats']['fitness']['std']:.4f} | {s7['metrics_stats']['fitness']['mean']:.4f} ± {s7['metrics_stats']['fitness']['std']:.4f} | {s9['metrics_stats']['fitness']['mean']:.4f} ± {s9['metrics_stats']['fitness']['std']:.4f} |",
         f"| **Fitness máximo** (mejor corrida) | **{s5['metrics_stats']['fitness']['max']:.4f}** (semilla {s5['best_seed']}) | **{s7['metrics_stats']['fitness']['max']:.4f}** (semilla {s7['best_seed']}) | **{s9['metrics_stats']['fitness']['max']:.4f}** (semilla {s9['best_seed']}) |",
-        f"| $OS^+$ (relativo) | {fmt_ms(s5, 'OS_pos', 4)} | {fmt_ms(s7, 'OS_pos', 4)} | {fmt_ms(s9, 'OS_pos', 4)} |",
-        f"| $OS^-$ (relativo) | {fmt_ms(s5, 'OS_neg', 4)} | {fmt_ms(s7, 'OS_neg', 4)} | {fmt_ms(s9, 'OS_neg', 4)} |",
+        f"| $OS^+$ (%) | {fmt_ms(s5, 'OS_pos', 4)} | {fmt_ms(s7, 'OS_pos', 4)} | {fmt_ms(s9, 'OS_pos', 4)} |",
+        f"| $OS^-$ (%) | {fmt_ms(s5, 'OS_neg', 4)} | {fmt_ms(s7, 'OS_neg', 4)} | {fmt_ms(s9, 'OS_neg', 4)} |",
         f"| $SSE^+$ (rad) | {fmt_ms(s5, 'SSE_pos', 4)} | {fmt_ms(s7, 'SSE_pos', 4)} | {fmt_ms(s9, 'SSE_pos', 4)} |",
         f"| $SSE^-$ (rad) | {fmt_ms(s5, 'SSE_neg', 4)} | {fmt_ms(s7, 'SSE_neg', 4)} | {fmt_ms(s9, 'SSE_neg', 4)} |",
         f"| $t_r^+$ (s) | {fmt_ms(s5, 'tr_pos', 2)} | {fmt_ms(s7, 'tr_pos', 2)} | {fmt_ms(s9, 'tr_pos', 2)} |",
@@ -321,7 +321,7 @@ def generate_all_figures(
             th[mask_zoom],
             color=colors[n],
             lw=1.7,
-            label=f"{n} térm.: tr+={m['tr_pos']:.2f}s, ts+={m['ts_pos']:.2f}s, OS+={m['OS_pos']:.4f}",
+            label=f"{n} térm.: tr+={m['tr_pos']:.2f}s, ts+={m['ts_pos']:.2f}s, OS+={m['OS_pos']:.4f}%",
         )
     axes[1].set_ylabel("Posición θ(t) [rad]")
     axes[1].set_title("Detalle de la Transición Positiva (-1 → +1 rad en t ∈ [100, 150) s)")
@@ -501,11 +501,11 @@ def generate_all_figures(
     os_p = [summary[n]["metrics_stats"]["OS_pos"]["mean"] for n in [5, 7, 9]]
     os_sd = [summary[n]["metrics_stats"]["OS_pos"]["std"] for n in [5, 7, 9]]
     axes[0, 2].bar(x_pos - 0.18, sse_p, 0.34, yerr=sse_sd, capsize=4, label="SSE+ [rad]", color="#2ca02c")
-    axes[0, 2].bar(x_pos + 0.18, os_p, 0.34, yerr=os_sd, capsize=4, label="OS+ [relativo]", color="#d62728")
+    axes[0, 2].bar(x_pos + 0.18, os_p, 0.34, yerr=os_sd, capsize=4, label="OS+ [%]", color="#d62728")
     axes[0, 2].set_xticks(x_pos)
     axes[0, 2].set_xticklabels(x_labels)
-    axes[0, 2].set_ylabel("Magnitud")
-    axes[0, 2].set_title("Error en Estado Estable (SSE+) y Overshoot (OS+)")
+    axes[0, 2].set_ylabel("Magnitud (SSE [rad] / OS [%])")
+    axes[0, 2].set_title("Error en Estado Estable (SSE+) y Overshoot (OS+ [%])")
     axes[0, 2].legend(fontsize=8)
 
     # 8d: Tiempo total de optimización (s)
