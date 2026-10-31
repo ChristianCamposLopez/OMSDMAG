@@ -34,6 +34,8 @@ El proyecto implementa una arquitectura modular, reproducible y verificable en P
 ├── Reporte_Parcial2_ComputacionFlexible.docx     # Reporte técnico completo en formato Word
 ├── main.py                                       # Script principal para reproducir todos los experimentos
 ├── build_deliverables.py                         # Generador automatizado del Notebook y el reporte DOCX
+├── docs/                                         # Documentación de seguimiento
+│   └── AUDITORIA_PARCIAL2.md                     # Hallazgos de la auditoría y plan de correcciones
 ├── src/                                          # Código fuente modular
 │   ├── config.py                                 # Parámetros, constantes y universos de discurso
 │   ├── plant_sim.py                              # Planta LTI y simulación estricta con scipy.signal.lsim
