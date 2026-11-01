@@ -55,8 +55,8 @@
     "R48 (celda [7,6]): IF error IS PB AND derror IS PM THEN voltage IS PB",
     "R49 (celda [7,7]): IF error IS PB AND derror IS PB THEN voltage IS PB"
   ],
-  "inference_time_ms": 20.21459586045239,
-  "memory_mb": 0.7062416076660156,
+  "inference_time_ms": 23.308327239647042,
+  "memory_mb": 0.7062435150146484,
   "optimization_time_s": 0.0,
   "metrics": {
     "fitness": 0.6432070292485654,

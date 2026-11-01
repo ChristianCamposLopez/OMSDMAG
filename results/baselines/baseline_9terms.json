@@ -87,22 +87,9 @@
     "R80 (celda [9,8]): IF error IS PVB AND derror IS PB THEN voltage IS PVB",
     "R81 (celda [9,9]): IF error IS PVB AND derror IS PVB THEN voltage IS PVB"
   ],
-  "inference_time_ms": 36.653243499895325,
+  "inference_time_ms": 50.18713288154686,
   "memory_mb": 1.024017333984375,
   "optimization_time_s": 0.0,
-  "lsim_consistency_error": 0.0,
-  "rule_coverage": {
-    "grid_size": 129,
-    "covered_fraction": 1.0,
-    "uncovered_fraction": 0.0,
-    "uncovered_pct": 0.0,
-    "num_active_rules": 81,
-    "total_possible_rules": 81
-  },
-  "n_sat_e": 110,
-  "n_sat_de": 3,
-  "e_sat_frac": 0.054972513743128434,
-  "de_sat_frac": 0.0014992503748125937,
   "metrics": {
     "fitness": 0.6471439253775374,
     "fitness_unclipped": 0.6471439253775374,

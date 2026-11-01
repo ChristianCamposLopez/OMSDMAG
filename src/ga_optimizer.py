@@ -12,6 +12,7 @@ Implementa las 5 fases obligatorias de la Parte 3 de `Parcial 2.pdf` (págs. 8-1
 import json
 import os
 import random
+import sys
 import time
 from typing import Dict
 import numpy as np
@@ -173,7 +174,7 @@ def evaluate_baseline_controller(
             "derror_mfs": ctrl_obj.decoded["derror_mfs"].tolist(),
             "voltage_mfs": ctrl_obj.decoded["voltage_mfs"].tolist(),
             "rule_active": ctrl_obj.decoded["rule_active"].astype(int).tolist(),
-            "rule_consequent": ctrl_obj.decoded["rule_consequent"].tolist(),
+            "rule_consequent": ctrl_obj.decoded["rule_consequent"].tolist()
         },
         "trajectory": {
             "t": sim_res["t"].tolist(),
@@ -181,8 +182,9 @@ def evaluate_baseline_controller(
             "u": sim_res["u"].tolist(),
             "theta": sim_res["theta"].tolist(),
             "e": sim_res["e"].tolist(),
-            "de": sim_res["de"].tolist(),
-        },
+            "de": sim_res["de"].tolist()
+        }
+
     }
 
     out_path = os.path.join(results_dir, f"baseline_{n_terms}terms.json")
@@ -208,7 +210,18 @@ def run_single_ga_experiment(
 
     if os.path.exists(out_path) and not force_rerun:
         with open(out_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            cached = json.load(f)
+        if "metrics" not in cached:
+            # JSON generado antes de guardar `metrics`: se recalcula desde la trayectoria
+            # guardada (es exactamente el theta que se evaluó), sin repetir el GA.
+            traj = cached["trajectory"]
+            cached["metrics"] = evaluate_controller_response(
+                np.asarray(traj["t"], dtype=float),
+                np.asarray(traj["theta"], dtype=float),
+            )
+            with open(out_path, "w", encoding="utf-8") as f:
+                json.dump(cached, f, indent=2, ensure_ascii=False)
+        return cached
 
     # Fijar semillas para reproducibilidad
     np.random.seed(seed)
@@ -244,6 +257,14 @@ def run_single_ga_experiment(
         eval_cache[key] = fit_val
         return fit_val
 
+    def _ga_callback_generation(ga_instance):
+        # Visual log for each generation: muestra número de generación y mejor fitness hasta ahora.
+        gen = ga_instance.generations_completed
+        best_fit = ga_instance.best_solution()[1]
+        print(f"[GA] Generación {gen}/{num_generations}: best_fitness = {best_fit:.6f}")
+        # Flush to ensure immediate output.
+        sys.stdout.flush()
+
     ga_instance = pygad.GA(
         num_generations=num_generations,
         num_parents_mating=NUM_PARENTS_MATING,
@@ -262,6 +283,7 @@ def run_single_ga_experiment(
         random_mutation_max_val=0.25,
         random_seed=int(seed),
         suppress_warnings=True,
+        on_generation=_ga_callback_generation,
     )
 
     # Medición obligatoria del tiempo de optimización (Parcial 2.pdf, pág. 14)
@@ -283,6 +305,13 @@ def run_single_ga_experiment(
     # Evaluación final exacta sobre los 200 s completos con scipy.signal.lsim
     final_sim = simulator.simulate(best_ctrl.compute_crisp)
     final_metrics = evaluate_controller_response(final_sim["t"], final_sim["theta"])
+    # Log diagnostics
+    print("[LOG] lsim_consistency_error:", final_sim["lsim_consistency_error"])
+    print("[LOG] n_sat_e:", final_sim["n_sat_e"])
+    print("[LOG] n_sat_de:", final_sim["n_sat_de"])
+    print("[LOG] e_sat_frac:", final_sim["e_sat_frac"])
+    print("[LOG] de_sat_frac:", final_sim["de_sat_frac"])
+    print("[LOG] rule_coverage:", best_ctrl.measure_rule_coverage())
 
     # Medición obligatoria del tiempo de inferencia con time.perf_counter() y controller.compute()
     inference_time_ms = best_ctrl.measure_inference_time_ms(n_evals=50)
@@ -302,9 +331,12 @@ def run_single_ga_experiment(
         "optimization_time_s": optimization_time,
         "inference_time_ms": inference_time_ms,
         "memory_mb": memory_mb,
+        # El GA ya evalúa con la inferencia exacta: ambos fitness deben coincidir.
         "fitness_ga_lookup": float(best_fitness_ga),
         "fitness_exact": float(final_metrics["fitness"]),
         "repair_penalty": float(best_ctrl.decoded["repair_penalty"]),
+        # Las 8 métricas de la Tabla 1, q y f1..f8 (las consumen main.py, tablas y figuras)
+        "metrics": final_metrics,
         "num_active_rules": best_ctrl.decoded["num_active_rules"],
         "total_possible_rules": best_ctrl.decoded["total_possible_rules"],
         "active_rules_list": best_ctrl.decoded["active_rules_list"],
@@ -315,16 +347,24 @@ def run_single_ga_experiment(
             "derror_mfs": best_ctrl.decoded["derror_mfs"].tolist(),
             "voltage_mfs": best_ctrl.decoded["voltage_mfs"].tolist(),
             "rule_active": best_ctrl.decoded["rule_active"].astype(int).tolist(),
-            "rule_consequent": best_ctrl.decoded["rule_consequent"].tolist(),
+            "rule_consequent": best_ctrl.decoded["rule_consequent"].tolist()
         },
+        "lsim_consistency_error": final_sim["lsim_consistency_error"],
+        "n_sat_e": final_sim["n_sat_e"],
+        "n_sat_de": final_sim["n_sat_de"],
+        "e_sat_frac": final_sim["e_sat_frac"],
+        "de_sat_frac": final_sim["de_sat_frac"],
+        "rule_coverage": best_ctrl.measure_rule_coverage(),
         "trajectory": {
+
             "t": final_sim["t"].tolist(),
             "r": final_sim["r"].tolist(),
             "u": final_sim["u"].tolist(),
             "theta": final_sim["theta"].tolist(),
             "e": final_sim["e"].tolist(),
-            "de": final_sim["de"].tolist(),
-        },
+            "de": final_sim["de"].tolist()
+        }
+
     }
 
     with open(out_path, "w", encoding="utf-8") as f:

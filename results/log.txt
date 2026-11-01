@@ -1,0 +1,620 @@
+❯ uv run python main.py --force
+==============================================================================
+ENTORNO DE EJECUCIÓN Y VERSIONES DE BIBLIOTECAS
+==============================================================================
+Python       : 3.13.5 (Linux 6.18.54.1-microsoft-standard-WSL2)
+numpy        : 2.5.4
+scipy        : 1.18.1
+scikit-fuzzy : 0.5.0
+pygad        : 3.9.2
+matplotlib   : 3.11.2
+==============================================================================
+
+[1/4] Ejecutando pruebas unitarias de verificación matemática y técnica...
+[OK] test_plant_and_reference (lsim ZOH consistente y referencia explícita) superado.
+    -> 'zero (u=0)': max |theta_lsim - theta_loop| = 0.000e+00
+    -> 'PD lineal': max |theta_lsim - theta_loop| = 0.000e+00
+    -> 'bang-bang saturada (±8.18 V)': max |theta_lsim - theta_loop| = 0.000e+00
+    -> 'constante 1.5 V': max |theta_lsim - theta_loop| = 0.000e+00
+[OK] test_lsim_loop_final_consistency (lazo vs lsim único, 4 leyes) superado.
+[OK] test_equations_12_and_13 (q literal, OS en % y tr0/ts0 fijos) superado.
+[OK] test_chromosome_encoding_and_repair (a < b < c y traslapes) superado.
+[OK] test_skfuzzy_equivalence (automf + optimizados/reparados, rango completo) superado.
+[OK] test_ga_uses_exact_inference (inferencia exacta y penalización aparte) superado.
+[OK] test_rule_coverage_and_saturation (baseline cov=1.0000, sparse sin cobertura=75.00%, e_sat=0.970) superado.
+
+[2/4] Fase 1 Obligatoria: Evaluando Controladores Base (automf, sin GA)...
+  -> Baseline 5 términos (25 reglas): Fitness=0.6331 | OS+=0.0000%, OS-=0.0000% | SSE+=0.0413, SSE-=0.0414 | tr+=30.40s, tr-=30.40s | ts+=46.30s, ts-=46.45s | Inf=10.778ms | Mem=0.514MB
+  -> Baseline 7 términos (49 reglas): Fitness=0.6432 | OS+=0.0000%, OS-=0.0000% | SSE+=0.0382, SSE-=0.0382 | tr+=27.90s, tr-=27.95s | ts+=44.60s, ts-=44.70s | Inf=23.308ms | Mem=0.706MB
+  -> Baseline 9 términos (81 reglas): Fitness=0.6471 | OS+=0.0000%, OS-=0.0000% | SSE+=0.0376, SSE-=0.0376 | tr+=26.80s, tr-=26.85s | ts+=44.30s, ts-=44.35s | Inf=50.187ms | Mem=1.024MB
+
+[3/4] Fases 2-5 Obligatorias: Optimización con PyGAD (sol_per_pop=20, num_generations=30, 5 semillas)...
+[GA] Generación 1/30: best_fitness = 0.592372
+[GA] Generación 1/30: best_fitness = 0.652624
+[GA] Generación 1/30: best_fitness = 0.638350
+[GA] Generación 1/30: best_fitness = 0.665603
+[GA] Generación 1/30: best_fitness = 0.664845
+[GA] Generación 1/30: best_fitness = 0.786039
+[GA] Generación 1/30: best_fitness = 0.650923
+[GA] Generación 1/30: best_fitness = 0.588393
+[GA] Generación 1/30: best_fitness = 0.678559
+[GA] Generación 1/30: best_fitness = 0.708416
+[GA] Generación 1/30: best_fitness = 0.654799
+[GA] Generación 1/30: best_fitness = 0.678260
+[GA] Generación 1/30: best_fitness = 0.684623
+[GA] Generación 1/30: best_fitness = 0.652101
+[GA] Generación 1/30: best_fitness = 0.715310
+[GA] Generación 2/30: best_fitness = 0.592372
+[GA] Generación 2/30: best_fitness = 0.638350
+[GA] Generación 2/30: best_fitness = 0.673692
+[GA] Generación 2/30: best_fitness = 0.708416
+[GA] Generación 2/30: best_fitness = 0.652624
+[GA] Generación 2/30: best_fitness = 0.665603
+[GA] Generación 2/30: best_fitness = 0.786039
+[GA] Generación 2/30: best_fitness = 0.650923
+[GA] Generación 2/30: best_fitness = 0.678559
+[GA] Generación 2/30: best_fitness = 0.678260
+[GA] Generación 2/30: best_fitness = 0.588393
+[GA] Generación 2/30: best_fitness = 0.684623
+[GA] Generación 2/30: best_fitness = 0.654799
+[GA] Generación 2/30: best_fitness = 0.652101
+[GA] Generación 2/30: best_fitness = 0.715310
+[GA] Generación 3/30: best_fitness = 0.638350
+[GA] Generación 3/30: best_fitness = 0.592372
+[GA] Generación 3/30: best_fitness = 0.665603
+[GA] Generación 3/30: best_fitness = 0.708416
+[GA] Generación 3/30: best_fitness = 0.721938
+[GA] Generación 3/30: best_fitness = 0.786039
+[GA] Generación 3/30: best_fitness = 0.684623
+[GA] Generación 3/30: best_fitness = 0.652624
+[GA] Generación 3/30: best_fitness = 0.650923
+[GA] Generación 3/30: best_fitness = 0.678260
+[GA] Generación 3/30: best_fitness = 0.678559
+[GA] Generación 3/30: best_fitness = 0.588393
+[GA] Generación 3/30: best_fitness = 0.654799
+[GA] Generación 3/30: best_fitness = 0.652101
+[GA] Generación 3/30: best_fitness = 0.715310
+[GA] Generación 4/30: best_fitness = 0.638350
+[GA] Generación 4/30: best_fitness = 0.628675
+[GA] Generación 4/30: best_fitness = 0.708416
+[GA] Generación 4/30: best_fitness = 0.685534
+[GA] Generación 4/30: best_fitness = 0.786242
+[GA] Generación 4/30: best_fitness = 0.665603
+[GA] Generación 4/30: best_fitness = 0.678260
+[GA] Generación 4/30: best_fitness = 0.741179
+[GA] Generación 4/30: best_fitness = 0.652624
+[GA] Generación 4/30: best_fitness = 0.650923
+[GA] Generación 4/30: best_fitness = 0.588393
+[GA] Generación 4/30: best_fitness = 0.678559
+[GA] Generación 4/30: best_fitness = 0.654799
+[GA] Generación 4/30: best_fitness = 0.652101
+[GA] Generación 4/30: best_fitness = 0.764975
+[GA] Generación 5/30: best_fitness = 0.638350
+[GA] Generación 5/30: best_fitness = 0.628675
+[GA] Generación 5/30: best_fitness = 0.708416
+[GA] Generación 5/30: best_fitness = 0.694403
+[GA] Generación 5/30: best_fitness = 0.678260
+[GA] Generación 5/30: best_fitness = 0.779776
+[GA] Generación 5/30: best_fitness = 0.650923
+[GA] Generación 5/30: best_fitness = 0.665603
+[GA] Generación 5/30: best_fitness = 0.807086
+[GA] Generación 5/30: best_fitness = 0.652624
+[GA] Generación 5/30: best_fitness = 0.588393
+[GA] Generación 5/30: best_fitness = 0.678559
+[GA] Generación 5/30: best_fitness = 0.654799
+[GA] Generación 6/30: best_fitness = 0.638350
+[GA] Generación 5/30: best_fitness = 0.652101
+[GA] Generación 5/30: best_fitness = 0.786967
+[GA] Generación 6/30: best_fitness = 0.628675
+[GA] Generación 6/30: best_fitness = 0.708416
+[GA] Generación 6/30: best_fitness = 0.750460
+[GA] Generación 6/30: best_fitness = 0.660502
+[GA] Generación 6/30: best_fitness = 0.678260
+[GA] Generación 6/30: best_fitness = 0.652624
+[GA] Generación 6/30: best_fitness = 0.779776
+[GA] Generación 6/30: best_fitness = 0.694787
+[GA] Generación 6/30: best_fitness = 0.807086
+[GA] Generación 6/30: best_fitness = 0.588393
+[GA] Generación 7/30: best_fitness = 0.638350
+[GA] Generación 6/30: best_fitness = 0.678559
+[GA] Generación 6/30: best_fitness = 0.654799
+[GA] Generación 6/30: best_fitness = 0.786967
+[GA] Generación 6/30: best_fitness = 0.683110
+[GA] Generación 7/30: best_fitness = 0.782738
+[GA] Generación 7/30: best_fitness = 0.678260
+[GA] Generación 7/30: best_fitness = 0.652624
+[GA] Generación 7/30: best_fitness = 0.708416
+[GA] Generación 7/30: best_fitness = 0.807086
+[GA] Generación 7/30: best_fitness = 0.753965
+[GA] Generación 7/30: best_fitness = 0.779776
+[GA] Generación 7/30: best_fitness = 0.694787
+[GA] Generación 7/30: best_fitness = 0.660502
+[GA] Generación 7/30: best_fitness = 0.645240
+[GA] Generación 8/30: best_fitness = 0.638350
+[GA] Generación 7/30: best_fitness = 0.654799
+[GA] Generación 7/30: best_fitness = 0.749541
+[GA] Generación 7/30: best_fitness = 0.683110
+[GA] Generación 7/30: best_fitness = 0.786967
+[GA] Generación 8/30: best_fitness = 0.782738
+[GA] Generación 8/30: best_fitness = 0.708416
+[GA] Generación 8/30: best_fitness = 0.678260
+[GA] Generación 8/30: best_fitness = 0.779776
+[GA] Generación 8/30: best_fitness = 0.807086
+[GA] Generación 8/30: best_fitness = 0.652624
+[GA] Generación 8/30: best_fitness = 0.753965
+[GA] Generación 9/30: best_fitness = 0.638350
+[GA] Generación 8/30: best_fitness = 0.645240
+[GA] Generación 8/30: best_fitness = 0.660502
+[GA] Generación 8/30: best_fitness = 0.694787
+[GA] Generación 8/30: best_fitness = 0.691889
+[GA] Generación 8/30: best_fitness = 0.749541
+[GA] Generación 8/30: best_fitness = 0.683110
+[GA] Generación 9/30: best_fitness = 0.782738
+[GA] Generación 8/30: best_fitness = 0.786967
+[GA] Generación 9/30: best_fitness = 0.708416
+[GA] Generación 9/30: best_fitness = 0.678260
+[GA] Generación 9/30: best_fitness = 0.779776
+[GA] Generación 9/30: best_fitness = 0.691889
+[GA] Generación 9/30: best_fitness = 0.652624
+[GA] Generación 9/30: best_fitness = 0.753965
+[GA] Generación 9/30: best_fitness = 0.645373
+[GA] Generación 9/30: best_fitness = 0.807086
+[GA] Generación 9/30: best_fitness = 0.660502
+[GA] Generación 10/30: best_fitness = 0.655936
+[GA] Generación 9/30: best_fitness = 0.694787
+[GA] Generación 9/30: best_fitness = 0.749541
+[GA] Generación 10/30: best_fitness = 0.782738
+[GA] Generación 9/30: best_fitness = 0.683110
+[GA] Generación 9/30: best_fitness = 0.786967
+[GA] Generación 10/30: best_fitness = 0.708416
+[GA] Generación 10/30: best_fitness = 0.779776
+[GA] Generación 10/30: best_fitness = 0.678260
+[GA] Generación 10/30: best_fitness = 0.753965
+[GA] Generación 10/30: best_fitness = 0.645373
+[GA] Generación 10/30: best_fitness = 0.652624
+[GA] Generación 10/30: best_fitness = 0.733766
+[GA] Generación 10/30: best_fitness = 0.807086
+[GA] Generación 10/30: best_fitness = 0.660502
+[GA] Generación 10/30: best_fitness = 0.749541
+[GA] Generación 11/30: best_fitness = 0.664282
+[GA] Generación 10/30: best_fitness = 0.694787
+[GA] Generación 11/30: best_fitness = 0.782738
+[GA] Generación 10/30: best_fitness = 0.683110
+[GA] Generación 10/30: best_fitness = 0.786967
+[GA] Generación 11/30: best_fitness = 0.708416
+[GA] Generación 11/30: best_fitness = 0.779776
+[GA] Generación 11/30: best_fitness = 0.678260
+[GA] Generación 11/30: best_fitness = 0.753965
+[GA] Generación 11/30: best_fitness = 0.749541
+[GA] Generación 11/30: best_fitness = 0.645373
+[GA] Generación 11/30: best_fitness = 0.807086
+[GA] Generación 11/30: best_fitness = 0.733766
+[GA] Generación 11/30: best_fitness = 0.652624
+[GA] Generación 11/30: best_fitness = 0.660502
+[GA] Generación 12/30: best_fitness = 0.782738
+[GA] Generación 11/30: best_fitness = 0.694787
+[GA] Generación 12/30: best_fitness = 0.681148
+[GA] Generación 11/30: best_fitness = 0.683110
+[GA] Generación 11/30: best_fitness = 0.786967
+[GA] Generación 12/30: best_fitness = 0.779776
+[GA] Generación 12/30: best_fitness = 0.732731
+[GA] Generación 12/30: best_fitness = 0.678260
+[GA] Generación 12/30: best_fitness = 0.753965
+[GA] Generación 12/30: best_fitness = 0.749541
+[GA] Generación 13/30: best_fitness = 0.788719
+[GA] Generación 12/30: best_fitness = 0.807086
+[GA] Generación 12/30: best_fitness = 0.652624
+[GA] Generación 12/30: best_fitness = 0.733766
+[GA] Generación 12/30: best_fitness = 0.719150
+[GA] Generación 12/30: best_fitness = 0.660502
+[GA] Generación 13/30: best_fitness = 0.681148
+[GA] Generación 12/30: best_fitness = 0.694787
+[GA] Generación 12/30: best_fitness = 0.683110
+[GA] Generación 13/30: best_fitness = 0.779776
+[GA] Generación 13/30: best_fitness = 0.753965
+[GA] Generación 12/30: best_fitness = 0.786967
+[GA] Generación 13/30: best_fitness = 0.732731
+[GA] Generación 13/30: best_fitness = 0.749541
+[GA] Generación 13/30: best_fitness = 0.678260
+[GA] Generación 14/30: best_fitness = 0.788719
+[GA] Generación 13/30: best_fitness = 0.719150
+[GA] Generación 13/30: best_fitness = 0.652624
+[GA] Generación 13/30: best_fitness = 0.660502
+[GA] Generación 13/30: best_fitness = 0.807086
+[GA] Generación 13/30: best_fitness = 0.733766
+[GA] Generación 14/30: best_fitness = 0.681148
+[GA] Generación 13/30: best_fitness = 0.694787
+[GA] Generación 14/30: best_fitness = 0.753965
+[GA] Generación 14/30: best_fitness = 0.859938
+[GA] Generación 13/30: best_fitness = 0.740852
+[GA] Generación 13/30: best_fitness = 0.786967
+[GA] Generación 14/30: best_fitness = 0.749541
+[GA] Generación 14/30: best_fitness = 0.732731
+[GA] Generación 15/30: best_fitness = 0.796314
+[GA] Generación 14/30: best_fitness = 0.678260
+[GA] Generación 14/30: best_fitness = 0.719150
+[GA] Generación 14/30: best_fitness = 0.733766
+[GA] Generación 14/30: best_fitness = 0.652624
+[GA] Generación 14/30: best_fitness = 0.660502
+[GA] Generación 14/30: best_fitness = 0.807086
+[GA] Generación 15/30: best_fitness = 0.681148
+[GA] Generación 14/30: best_fitness = 0.694787
+[GA] Generación 15/30: best_fitness = 0.753965
+[GA] Generación 15/30: best_fitness = 0.859938
+[GA] Generación 14/30: best_fitness = 0.740852
+[GA] Generación 15/30: best_fitness = 0.749541
+[GA] Generación 16/30: best_fitness = 0.796314
+[GA] Generación 14/30: best_fitness = 0.786967
+[GA] Generación 15/30: best_fitness = 0.732731
+[GA] Generación 15/30: best_fitness = 0.678260
+[GA] Generación 15/30: best_fitness = 0.719150
+[GA] Generación 15/30: best_fitness = 0.733766
+[GA] Generación 15/30: best_fitness = 0.652624
+[GA] Generación 15/30: best_fitness = 0.660502
+[GA] Generación 15/30: best_fitness = 0.807086
+[GA] Generación 16/30: best_fitness = 0.681148
+[GA] Generación 16/30: best_fitness = 0.753965
+[GA] Generación 15/30: best_fitness = 0.694787
+[GA] Generación 16/30: best_fitness = 0.859938
+[GA] Generación 16/30: best_fitness = 0.749541
+[GA] Generación 15/30: best_fitness = 0.740852
+[GA] Generación 17/30: best_fitness = 0.796314
+[GA] Generación 15/30: best_fitness = 0.786967
+[GA] Generación 16/30: best_fitness = 0.732731
+[GA] Generación 16/30: best_fitness = 0.678260
+[GA] Generación 16/30: best_fitness = 0.737814
+[GA] Generación 16/30: best_fitness = 0.733766
+[GA] Generación 16/30: best_fitness = 0.652624
+[GA] Generación 16/30: best_fitness = 0.660502
+[GA] Generación 16/30: best_fitness = 0.807086
+[GA] Generación 17/30: best_fitness = 0.681148
+[GA] Generación 17/30: best_fitness = 0.753965
+[GA] Generación 16/30: best_fitness = 0.694787
+[GA] Generación 17/30: best_fitness = 0.749541
+[GA] Generación 17/30: best_fitness = 0.859938
+[GA] Generación 18/30: best_fitness = 0.796314
+[GA] Generación 16/30: best_fitness = 0.740852
+[GA] Generación 16/30: best_fitness = 0.786967
+[GA] Generación 17/30: best_fitness = 0.732731
+[GA] Generación 17/30: best_fitness = 0.678260
+[GA] Generación 17/30: best_fitness = 0.737814
+[GA] Generación 17/30: best_fitness = 0.652624
+[GA] Generación 17/30: best_fitness = 0.733766
+[GA] Generación 18/30: best_fitness = 0.681148
+[GA] Generación 17/30: best_fitness = 0.660502
+[GA] Generación 17/30: best_fitness = 0.807086
+[GA] Generación 18/30: best_fitness = 0.749541
+[GA] Generación 18/30: best_fitness = 0.753965
+[GA] Generación 17/30: best_fitness = 0.694787
+[GA] Generación 18/30: best_fitness = 0.859938
+[GA] Generación 19/30: best_fitness = 0.796314
+[GA] Generación 17/30: best_fitness = 0.786967
+[GA] Generación 17/30: best_fitness = 0.740852
+[GA] Generación 18/30: best_fitness = 0.732731
+[GA] Generación 18/30: best_fitness = 0.678260
+[GA] Generación 18/30: best_fitness = 0.733766
+[GA] Generación 18/30: best_fitness = 0.737814
+[GA] Generación 18/30: best_fitness = 0.652624
+[GA] Generación 19/30: best_fitness = 0.749541
+[GA] Generación 19/30: best_fitness = 0.681148
+[GA] Generación 18/30: best_fitness = 0.660502
+[GA] Generación 20/30: best_fitness = 0.796314
+[GA] Generación 18/30: best_fitness = 0.807086
+[GA] Generación 18/30: best_fitness = 0.694787
+[GA] Generación 19/30: best_fitness = 0.753965
+[GA] Generación 18/30: best_fitness = 0.786967
+[GA] Generación 19/30: best_fitness = 0.859938
+[GA] Generación 18/30: best_fitness = 0.740852
+[GA] Generación 19/30: best_fitness = 0.732731
+[GA] Generación 19/30: best_fitness = 0.718850
+[GA] Generación 20/30: best_fitness = 0.749541
+[GA] Generación 19/30: best_fitness = 0.733766
+[GA] Generación 19/30: best_fitness = 0.652624
+[GA] Generación 19/30: best_fitness = 0.739633
+[GA] Generación 20/30: best_fitness = 0.681148
+[GA] Generación 21/30: best_fitness = 0.796314
+[GA] Generación 19/30: best_fitness = 0.786967
+[GA] Generación 19/30: best_fitness = 0.660502
+[GA] Generación 19/30: best_fitness = 0.694787
+[GA] Generación 19/30: best_fitness = 0.807086
+[GA] Generación 20/30: best_fitness = 0.859938
+[GA] Generación 20/30: best_fitness = 0.753965
+[GA] Generación 22/30: best_fitness = 0.796314
+[GA] Generación 20/30: best_fitness = 0.732731
+[GA] Generación 19/30: best_fitness = 0.776681
+[GA] Generación 21/30: best_fitness = 0.749541
+[GA] Generación 20/30: best_fitness = 0.718850
+[GA] Generación 20/30: best_fitness = 0.652624
+[GA] Generación 20/30: best_fitness = 0.739633
+[GA] Generación 21/30: best_fitness = 0.681148
+[GA] Generación 20/30: best_fitness = 0.733766
+[GA] Generación 20/30: best_fitness = 0.786967
+[GA] Generación 20/30: best_fitness = 0.660502
+[GA] Generación 21/30: best_fitness = 0.859938
+[GA] Generación 20/30: best_fitness = 0.694787
+[GA] Generación 20/30: best_fitness = 0.807086
+[GA] Generación 21/30: best_fitness = 0.753965
+[GA] Generación 23/30: best_fitness = 0.796314
+[GA] Generación 21/30: best_fitness = 0.732731
+[GA] Generación 20/30: best_fitness = 0.776681
+[GA] Generación 22/30: best_fitness = 0.749541
+[GA] Generación 21/30: best_fitness = 0.718850
+[GA] Generación 22/30: best_fitness = 0.681492
+[GA] Generación 21/30: best_fitness = 0.739633
+[GA] Generación 21/30: best_fitness = 0.652624
+[GA] Generación 21/30: best_fitness = 0.733766
+[GA] Generación 21/30: best_fitness = 0.786967
+[GA] Generación 21/30: best_fitness = 0.660502
+[GA] Generación 22/30: best_fitness = 0.859938
+[GA] Generación 24/30: best_fitness = 0.796314
+[GA] Generación 21/30: best_fitness = 0.694787
+[GA] Generación 21/30: best_fitness = 0.807086
+[GA] Generación 22/30: best_fitness = 0.753965
+[GA] Generación 21/30: best_fitness = 0.776681
+[GA] Generación 23/30: best_fitness = 0.749586
+[GA] Generación 22/30: best_fitness = 0.732731
+[GA] Generación 22/30: best_fitness = 0.739633
+[GA] Generación 23/30: best_fitness = 0.681492
+[GA] Generación 22/30: best_fitness = 0.718850
+[GA] Generación 22/30: best_fitness = 0.652624
+[GA] Generación 22/30: best_fitness = 0.786967
+[GA] Generación 22/30: best_fitness = 0.660502
+[GA] Generación 22/30: best_fitness = 0.733766
+[GA] Generación 25/30: best_fitness = 0.796314
+[GA] Generación 23/30: best_fitness = 0.859938
+[GA] Generación 22/30: best_fitness = 0.694787
+[GA] Generación 22/30: best_fitness = 0.807086
+[GA] Generación 23/30: best_fitness = 0.753965
+[GA] Generación 23/30: best_fitness = 0.739633
+[GA] Generación 24/30: best_fitness = 0.749586
+[GA] Generación 24/30: best_fitness = 0.681492
+[GA] Generación 22/30: best_fitness = 0.776681
+[GA] Generación 23/30: best_fitness = 0.732731
+[GA] Generación 23/30: best_fitness = 0.718850
+[GA] Generación 23/30: best_fitness = 0.664102
+[GA] Generación 23/30: best_fitness = 0.786967
+[GA] Generación 26/30: best_fitness = 0.796314
+[GA] Generación 23/30: best_fitness = 0.660502
+[GA] Generación 23/30: best_fitness = 0.733766
+[GA] Generación 24/30: best_fitness = 0.859938
+[GA] Generación 23/30: best_fitness = 0.694787
+[GA] Generación 23/30: best_fitness = 0.807086
+[GA] Generación 25/30: best_fitness = 0.749586
+[GA] Generación 24/30: best_fitness = 0.741550
+[GA] Generación 23/30: best_fitness = 0.776681
+[GA] Generación 24/30: best_fitness = 0.753965
+[GA] Generación 25/30: best_fitness = 0.681492
+[GA] Generación 24/30: best_fitness = 0.732731
+[GA] Generación 24/30: best_fitness = 0.718850
+[GA] Generación 27/30: best_fitness = 0.796314
+[GA] Generación 24/30: best_fitness = 0.664102
+[GA] Generación 24/30: best_fitness = 0.660502
+[GA] Generación 24/30: best_fitness = 0.786967
+[GA] Generación 25/30: best_fitness = 0.859938
+[GA] Generación 24/30: best_fitness = 0.733766
+[GA] Generación 24/30: best_fitness = 0.694787
+[GA] Generación 26/30: best_fitness = 0.749586
+[GA] Generación 24/30: best_fitness = 0.776681
+[GA] Generación 25/30: best_fitness = 0.741550
+[GA] Generación 24/30: best_fitness = 0.807086
+[GA] Generación 25/30: best_fitness = 0.753965
+[GA] Generación 26/30: best_fitness = 0.743107
+[GA] Generación 28/30: best_fitness = 0.796314
+[GA] Generación 25/30: best_fitness = 0.732731
+[GA] Generación 25/30: best_fitness = 0.718850
+[GA] Generación 26/30: best_fitness = 0.859938
+[GA] Generación 25/30: best_fitness = 0.664102
+[GA] Generación 25/30: best_fitness = 0.660502
+[GA] Generación 25/30: best_fitness = 0.786967
+[GA] Generación 25/30: best_fitness = 0.733766
+[GA] Generación 25/30: best_fitness = 0.694787
+[GA] Generación 26/30: best_fitness = 0.753965
+[GA] Generación 25/30: best_fitness = 0.776681
+[GA] Generación 27/30: best_fitness = 0.749586
+[GA] Generación 29/30: best_fitness = 0.796314
+[GA] Generación 26/30: best_fitness = 0.732731
+[GA] Generación 26/30: best_fitness = 0.741550
+[GA] Generación 25/30: best_fitness = 0.807086
+[GA] Generación 27/30: best_fitness = 0.743107
+[GA] Generación 27/30: best_fitness = 0.859938
+[GA] Generación 26/30: best_fitness = 0.718850
+[GA] Generación 26/30: best_fitness = 0.660502
+[GA] Generación 26/30: best_fitness = 0.664675
+[GA] Generación 26/30: best_fitness = 0.786967
+[GA] Generación 26/30: best_fitness = 0.733766
+[GA] Generación 26/30: best_fitness = 0.694787
+[GA] Generación 30/30: best_fitness = 0.796314
+[LOG] lsim_consistency_error: 0.0
+[LOG] n_sat_e: 112
+[LOG] n_sat_de: 3
+[LOG] e_sat_frac: 0.0559720139930035
+[LOG] de_sat_frac: 0.0014992503748125937
+[LOG] rule_coverage: {'grid_size': 200, 'covered_fraction': 0.920875, 'uncovered_fraction': 0.079125, 'uncovered_pct': 7.9125, 'num_active_rules': 32, 'total_possible_rules': 49}
+[GA] Generación 27/30: best_fitness = 0.753965
+[GA] Generación 28/30: best_fitness = 0.755325
+[GA] Generación 26/30: best_fitness = 0.776681
+[GA] Generación 27/30: best_fitness = 0.732731
+[GA] Generación 27/30: best_fitness = 0.741550
+[GA] Generación 26/30: best_fitness = 0.807086
+[GA] Generación 28/30: best_fitness = 0.743107
+[GA] Generación 27/30: best_fitness = 0.718850
+[GA] Generación 27/30: best_fitness = 0.660502
+[GA] Generación 28/30: best_fitness = 0.859938
+[GA] Generación 27/30: best_fitness = 0.694787
+[GA] Generación 27/30: best_fitness = 0.664675
+[GA] Generación 27/30: best_fitness = 0.733766
+[GA] Generación 27/30: best_fitness = 0.793617
+[GA] Generación 28/30: best_fitness = 0.753965
+[GA] Generación 27/30: best_fitness = 0.776681
+[GA] Generación 29/30: best_fitness = 0.755325
+[GA] Generación 28/30: best_fitness = 0.732731
+[GA] Generación 28/30: best_fitness = 0.741550
+[GA] Generación 29/30: best_fitness = 0.859938
+[GA] Generación 27/30: best_fitness = 0.807086
+[GA] Generación 28/30: best_fitness = 0.660502
+[GA] Generación 29/30: best_fitness = 0.743107
+[GA] Generación 28/30: best_fitness = 0.718850
+[GA] Generación 28/30: best_fitness = 0.664675
+[GA] Generación 28/30: best_fitness = 0.694787
+[GA] Generación 28/30: best_fitness = 0.793617
+[GA] Generación 28/30: best_fitness = 0.733766
+[GA] Generación 29/30: best_fitness = 0.753965
+[GA] Generación 28/30: best_fitness = 0.776681
+[GA] Generación 30/30: best_fitness = 0.755325
+[LOG] lsim_consistency_error: 0.0
+[LOG] n_sat_e: 107
+[LOG] n_sat_de: 3
+[LOG] e_sat_frac: 0.05347326336831584
+[LOG] de_sat_frac: 0.0014992503748125937
+[LOG] rule_coverage: {'grid_size': 200, 'covered_fraction': 0.9871, 'uncovered_fraction': 0.012900000000000023, 'uncovered_pct': 1.2900000000000023, 'num_active_rules': 32, 'total_possible_rules': 49}
+[GA] Generación 29/30: best_fitness = 0.732731
+[GA] Generación 30/30: best_fitness = 0.859938
+[GA] Generación 29/30: best_fitness = 0.718850
+[LOG] lsim_consistency_error: 0.0
+[LOG] n_sat_e: 97
+[LOG] n_sat_de: 3
+[LOG] e_sat_frac: 0.04847576211894053
+[LOG] de_sat_frac: 0.0014992503748125937
+[LOG] rule_coverage: {'grid_size': 200, 'covered_fraction': 0.971575, 'uncovered_fraction': 0.028425000000000034, 'uncovered_pct': 2.8425000000000034, 'num_active_rules': 53, 'total_possible_rules': 81}
+[GA] Generación 29/30: best_fitness = 0.772496
+[GA] Generación 30/30: best_fitness = 0.743107
+[GA] Generación 29/30: best_fitness = 0.660502
+[LOG] lsim_consistency_error: 0.0
+[LOG] n_sat_e: 151
+[LOG] n_sat_de: 3
+[LOG] e_sat_frac: 0.07546226886556721
+[LOG] de_sat_frac: 0.0014992503748125937
+[LOG] rule_coverage: {'grid_size': 200, 'covered_fraction': 1.0, 'uncovered_fraction': 0.0, 'uncovered_pct': 0.0, 'num_active_rules': 21, 'total_possible_rules': 25}
+[GA] Generación 28/30: best_fitness = 0.807086
+[GA] Generación 29/30: best_fitness = 0.664675
+[GA] Generación 29/30: best_fitness = 0.793617
+[GA] Generación 29/30: best_fitness = 0.733766
+[GA] Generación 29/30: best_fitness = 0.694787
+[GA] Generación 30/30: best_fitness = 0.753965
+[LOG] lsim_consistency_error: 0.0
+[LOG] n_sat_e: 147
+[LOG] n_sat_de: 3
+[LOG] e_sat_frac: 0.0734632683658171
+[LOG] de_sat_frac: 0.0014992503748125937
+[LOG] rule_coverage: {'grid_size': 200, 'covered_fraction': 1.0, 'uncovered_fraction': 0.0, 'uncovered_pct': 0.0, 'num_active_rules': 32, 'total_possible_rules': 49}
+[GA] Generación 29/30: best_fitness = 0.776681
+[GA] Generación 30/30: best_fitness = 0.718850
+[GA] Generación 30/30: best_fitness = 0.732731
+[LOG] lsim_consistency_error: 0.0
+[LOG] n_sat_e: 117
+[LOG] n_sat_de: 3
+[LOG] e_sat_frac: 0.05847076461769116
+[LOG] de_sat_frac: 0.0014992503748125937
+[LOG] rule_coverage: {'grid_size': 200, 'covered_fraction': 0.960625, 'uncovered_fraction': 0.03937500000000005, 'uncovered_pct': 3.937500000000005, 'num_active_rules': 26, 'total_possible_rules': 49}
+[GA] Generación 30/30: best_fitness = 0.772496
+[LOG] lsim_consistency_error: 0.0
+[LOG] n_sat_e: 104
+[LOG] n_sat_de: 3
+[LOG] e_sat_frac: 0.051974012993503245
+[LOG] de_sat_frac: 0.0014992503748125937
+[LOG] rule_coverage: {'grid_size': 200, 'covered_fraction': 0.981, 'uncovered_fraction': 0.019000000000000017, 'uncovered_pct': 1.9000000000000017, 'num_active_rules': 64, 'total_possible_rules': 81}
+[LOG] lsim_consistency_error: 0.0
+[LOG] n_sat_e: 132
+[LOG] n_sat_de: 3
+[LOG] e_sat_frac: 0.06596701649175413
+[LOG] de_sat_frac: 0.0014992503748125937
+[LOG] rule_coverage: {'grid_size': 200, 'covered_fraction': 0.844575, 'uncovered_fraction': 0.15542500000000004, 'uncovered_pct': 15.542500000000004, 'num_active_rules': 15, 'total_possible_rules': 25}
+[GA] Generación 30/30: best_fitness = 0.660502
+[GA] Generación 30/30: best_fitness = 0.664675
+[GA] Generación 30/30: best_fitness = 0.793617
+[LOG] lsim_consistency_error: 0.0
+[LOG] n_sat_e: 168
+[LOG] n_sat_de: 3
+[LOG] e_sat_frac: 0.08395802098950525
+[LOG] de_sat_frac: 0.0014992503748125937
+[LOG] rule_coverage: {'grid_size': 200, 'covered_fraction': 0.9305, 'uncovered_fraction': 0.0695, 'uncovered_pct': 6.950000000000001, 'num_active_rules': 49, 'total_possible_rules': 81}
+[LOG] lsim_consistency_error: 0.0
+[LOG] n_sat_e: 105
+[LOG] n_sat_de: 3
+[LOG] e_sat_frac: 0.05247376311844078
+[LOG] de_sat_frac: 0.0014992503748125937
+[LOG] rule_coverage: {'grid_size': 200, 'covered_fraction': 0.886375, 'uncovered_fraction': 0.11362499999999998, 'uncovered_pct': 11.362499999999997, 'num_active_rules': 18, 'total_possible_rules': 25}
+[LOG] lsim_consistency_error: 0.0
+[LOG] n_sat_e: 91
+[LOG] n_sat_de: 3
+[LOG] e_sat_frac: 0.04547726136931534
+[LOG] de_sat_frac: 0.0014992503748125937
+[LOG] rule_coverage: {'grid_size': 200, 'covered_fraction': 1.0, 'uncovered_fraction': 0.0, 'uncovered_pct': 0.0, 'num_active_rules': 70, 'total_possible_rules': 81}
+[GA] Generación 29/30: best_fitness = 0.807086
+[GA] Generación 30/30: best_fitness = 0.694787
+[GA] Generación 30/30: best_fitness = 0.733766
+[LOG] lsim_consistency_error: 0.0
+[LOG] n_sat_e: 174
+[LOG] n_sat_de: 3
+[LOG] e_sat_frac: 0.08695652173913043
+[LOG] de_sat_frac: 0.0014992503748125937
+[LOG] rule_coverage: {'grid_size': 200, 'covered_fraction': 0.9153, 'uncovered_fraction': 0.0847, 'uncovered_pct': 8.469999999999999, 'num_active_rules': 61, 'total_possible_rules': 81}
+[LOG] lsim_consistency_error: 0.0
+[LOG] n_sat_e: 108
+[LOG] n_sat_de: 3
+[LOG] e_sat_frac: 0.053973013493253376
+[LOG] de_sat_frac: 0.0014992503748125937
+[LOG] rule_coverage: {'grid_size': 200, 'covered_fraction': 1.0, 'uncovered_fraction': 0.0, 'uncovered_pct': 0.0, 'num_active_rules': 19, 'total_possible_rules': 25}
+[GA] Generación 30/30: best_fitness = 0.776681
+[LOG] lsim_consistency_error: 0.0
+[LOG] n_sat_e: 147
+[LOG] n_sat_de: 3
+[LOG] e_sat_frac: 0.0734632683658171
+[LOG] de_sat_frac: 0.0014992503748125937
+[LOG] rule_coverage: {'grid_size': 200, 'covered_fraction': 0.910575, 'uncovered_fraction': 0.08942499999999998, 'uncovered_pct': 8.942499999999997, 'num_active_rules': 19, 'total_possible_rules': 25}
+[GA] Generación 30/30: best_fitness = 0.807086
+[LOG] lsim_consistency_error: 0.0
+[LOG] n_sat_e: 110
+[LOG] n_sat_de: 3
+[LOG] e_sat_frac: 0.054972513743128434
+[LOG] de_sat_frac: 0.0014992503748125937
+[LOG] rule_coverage: {'grid_size': 200, 'covered_fraction': 0.984475, 'uncovered_fraction': 0.015525000000000011, 'uncovered_pct': 1.552500000000001, 'num_active_rules': 39, 'total_possible_rules': 49}
+
+--- Resultados Controlador de 5 términos lingüísticos ---
+  Corrida 1/5 (semilla=  42): Fitness=0.7725 | OS+=0.0000%, OS-=0.0000% | SSE+=0.0721, SSE-=0.0094 | tr+=19.00s, tr-=12.30s | ts+=50.00s, ts-=15.90s | Reglas=15/25 | Opt=10372.20s | Inf=15.493ms | Mem=0.460MB
+  Corrida 2/5 (semilla= 100): Fitness=0.7936 | OS+=0.1484%, OS-=0.0000% | SSE+=0.0064, SSE-=0.0097 | tr+=13.00s, tr-=15.00s | ts+=19.90s, ts-=23.70s | Reglas=18/25 | Opt=10387.28s | Inf=19.833ms | Mem=0.438MB
+  Corrida 3/5 (semilla=2026): Fitness=0.7338 | OS+=0.0000%, OS-=4.0857% | SSE+=0.0332, SSE-=0.0339 | tr+=15.80s, tr-=11.90s | ts+=20.80s, ts-=16.20s | Reglas=19/25 | Opt=10411.03s | Inf=9.739ms | Mem=0.446MB
+  Corrida 4/5 (semilla= 777): Fitness=0.7767 | OS+=0.0000%, OS-=0.0000% | SSE+=0.0228, SSE-=0.1342 | tr+=10.20s, tr-=40.20s | ts+=12.90s, ts-=50.00s | Reglas=19/25 | Opt=10420.38s | Inf=8.114ms | Mem=0.446MB
+  Corrida 5/5 (semilla= 999): Fitness=0.7431 | OS+=0.0000%, OS-=0.0000% | SSE+=0.3850, SSE-=0.0253 | tr+=50.00s, tr-=10.00s | ts+=50.00s, ts-=12.05s | Reglas=21/25 | Opt=10158.13s | Inf=36.460ms | Mem=0.465MB
+
+--- Resultados Controlador de 7 términos lingüísticos ---
+  Corrida 1/5 (semilla=  42): Fitness=0.8071 | OS+=0.0000%, OS-=0.2676% | SSE+=0.0032, SSE-=0.0021 | tr+=19.20s, tr-=11.10s | ts+=25.20s, ts-=14.80s | Reglas=39/49 | Opt=10427.76s | Inf=15.202ms | Mem=0.692MB
+  Corrida 2/5 (semilla= 100): Fitness=0.7189 | OS+=0.5647%, OS-=0.0000% | SSE+=0.0071, SSE-=0.0058 | tr+=23.00s, tr-=15.10s | ts+=28.70s, ts-=19.00s | Reglas=26/49 | Opt=10353.27s | Inf=67.359ms | Mem=0.663MB
+  Corrida 3/5 (semilla=2026): Fitness=0.7540 | OS+=0.3808%, OS-=0.1693% | SSE+=0.0047, SSE-=0.0042 | tr+=14.90s, tr-=16.10s | ts+=19.40s, ts-=20.70s | Reglas=32/49 | Opt=10280.72s | Inf=61.334ms | Mem=0.667MB
+  Corrida 4/5 (semilla= 777): Fitness=0.7963 | OS+=0.0000%, OS-=0.7533% | SSE+=0.0026, SSE-=0.0077 | tr+=13.20s, tr-=14.20s | ts+=16.80s, ts-=18.00s | Reglas=32/49 | Opt=9397.47s | Inf=97.486ms | Mem=0.667MB
+  Corrida 5/5 (semilla= 999): Fitness=0.7553 | OS+=1.8466%, OS-=0.0000% | SSE+=0.0170, SSE-=0.0164 | tr+=18.60s, tr-=10.90s | ts+=25.40s, ts-=14.40s | Reglas=32/49 | Opt=10098.36s | Inf=69.797ms | Mem=0.667MB
+
+--- Resultados Controlador de 9 términos lingüísticos ---
+  Corrida 1/5 (semilla=  42): Fitness=0.7327 | OS+=0.0000%, OS-=0.0000% | SSE+=0.0055, SSE-=0.0295 | tr+=14.90s, tr-=26.70s | ts+=20.20s, ts-=41.60s | Reglas=64/81 | Opt=10358.01s | Inf=115.189ms | Mem=0.937MB
+  Corrida 2/5 (semilla= 100): Fitness=0.8599 | OS+=0.0000%, OS-=0.0000% | SSE+=0.0449, SSE-=0.0038 | tr+=9.80s, tr-=17.65s | ts+=13.80s, ts-=22.15s | Reglas=53/81 | Opt=10133.13s | Inf=150.844ms | Mem=0.861MB
+  Corrida 3/5 (semilla=2026): Fitness=0.6647 | OS+=0.0000%, OS-=0.0000% | SSE+=0.1530, SSE-=0.0171 | tr+=22.20s, tr-=21.80s | ts+=50.00s, ts-=28.80s | Reglas=70/81 | Opt=10386.83s | Inf=99.084ms | Mem=0.951MB
+  Corrida 4/5 (semilla= 777): Fitness=0.6605 | OS+=0.0000%, OS-=0.0000% | SSE+=0.0147, SSE-=0.2991 | tr+=17.90s, tr-=50.00s | ts+=22.00s, ts-=50.00s | Reglas=49/81 | Opt=10384.95s | Inf=68.976ms | Mem=0.855MB
+  Corrida 5/5 (semilla= 999): Fitness=0.6948 | OS+=0.0000%, OS-=0.0000% | SSE+=0.0142, SSE-=0.1032 | tr+=17.20s, tr-=28.80s | ts+=22.60s, ts-=50.00s | Reglas=61/81 | Opt=10408.31s | Inf=45.746ms | Mem=0.908MB
+
+[4/4] Generando tablas estadísticas y figuras científicas...
+  -> 8 figuras guardadas en 'results/figures/'.
+
+==============================================================================
+### Tabla Obligatoria de Resultados (`Parcial 2.pdf`, pág. 10)
+
+| Métrica | 5 términos (Controlador A) | 7 términos (Controlador B) | 9 términos (Controlador C) |
+| :--- | :---: | :---: | :---: |
+| **Fitness promedio** (5 corridas) | 0.7639 ± 0.0248 | 0.7663 ± 0.0357 | 0.7225 ± 0.0821 |
+| **Fitness máximo** (mejor corrida) | **0.7936** (semilla 100) | **0.8071** (semilla 42) | **0.8599** (semilla 100) |
+| $OS^+$ (%) | 0.1484 (media: 0.0297 ± 0.0663) | 0.0000 (media: 0.5584 ± 0.7607) | 0.0000 (media: 0.0000 ± 0.0000) |
+| $OS^-$ (%) | 0.0000 (media: 0.8171 ± 1.8272) | 0.2676 (media: 0.2381 ± 0.3100) | 0.0000 (media: 0.0000 ± 0.0000) |
+| $SSE^+$ (rad) | 0.0064 (media: 0.1039 ± 0.1590) | 0.0032 (media: 0.0069 ± 0.0059) | 0.0449 (media: 0.0465 ± 0.0614) |
+| $SSE^-$ (rad) | 0.0097 (media: 0.0425 ± 0.0523) | 0.0021 (media: 0.0072 ± 0.0055) | 0.0038 (media: 0.0906 ± 0.1228) |
+| $t_r^+$ (s) | 13.00 (media: 21.60 ± 16.21) | 19.20 (media: 17.78 ± 3.85) | 9.80 (media: 16.40 ± 4.54) |
+| $t_r^-$ (s) | 15.00 (media: 17.88 ± 12.60) | 11.10 (media: 13.48 ± 2.36) | 17.65 (media: 28.99 ± 12.52) |
+| $t_s^+$ (s) | 19.90 (media: 30.72 ± 17.86) | 25.20 (media: 23.10 ± 4.86) | 13.80 (media: 25.72 ± 14.01) |
+| $t_s^-$ (s) | 23.70 (media: 23.57 ± 15.37) | 14.80 (media: 17.38 ± 2.72) | 22.15 (media: 38.51 ± 12.60) |
+| **Reglas activas** (mejor / media ± DE) | 18 / 25 (18.4 ± 2.2) | 39 / 49 (32.2 ± 4.6) | 53 / 81 (59.4 ± 8.4) |
+| **Número de parámetros optimizados** | 95 genes | 161 genes | 243 genes |
+| **Tiempo de optimización (s)** | 10349.80 ± 108.83 s | 10111.51 ± 417.47 s | 10334.25 ± 113.84 s |
+| **Tiempo promedio de inferencia (ms)** | 17.928 ± 11.362 ms | 62.235 ± 29.745 ms | 95.968 ± 40.747 ms |
+| **Uso de memoria (MB)** | 0.451 ± 0.011 MB | 0.671 ± 0.012 MB | 0.902 ± 0.043 MB |
+==============================================================================
+
+~/Documents/OMSDMAG revision ⇡2                          2h 54m 30s
+❯

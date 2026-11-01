@@ -421,7 +421,7 @@ def generate_all_figures(
 
         # Matriz visual: -1 si inactiva, 0..N-1 si activa
         vis_mat = np.where(act == 1, cons, -1)
-        cmap = plt.cm.get_cmap("YlGnBu", n)
+        cmap = plt.get_cmap("YlGnBu", n)
         masked = np.ma.masked_where(vis_mat < 0, vis_mat)
         ax.set_facecolor("#f0f0f0")
         im = ax.imshow(masked, cmap=cmap, vmin=0, vmax=n - 1)
@@ -568,7 +568,7 @@ def _plot_mfs_before_after(
         ("Voltaje v(t) [V]", "voltage_mfs", np.linspace(VOLTAGE_MIN, VOLTAGE_MAX, UNIVERSE_RESOLUTION)),
     ]
 
-    cmap = plt.cm.get_cmap("tab10", n_terms)
+    cmap = plt.get_cmap("tab10", n_terms)
     for row_idx, (var_title, mf_key, univ) in enumerate(vars_spec):
         base_mfs = np.array(baseline_rec["decoded_mfs"][mf_key], dtype=float)
         opt_mfs = np.array(best_rec["decoded_mfs"][mf_key], dtype=float)
@@ -600,4 +600,3 @@ def _plot_mfs_before_after(
     fig.savefig(out_path, bbox_inches="tight")
     plt.close(fig)
     return out_path
-

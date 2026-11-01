@@ -31,8 +31,8 @@
     "R24 (celda [5,4]): IF error IS PB AND derror IS PS THEN voltage IS PB",
     "R25 (celda [5,5]): IF error IS PB AND derror IS PB THEN voltage IS PB"
   ],
-  "inference_time_ms": 8.301428400154691,
-  "memory_mb": 0.5143089294433594,
+  "inference_time_ms": 10.777881399262697,
+  "memory_mb": 0.5143108367919922,
   "optimization_time_s": 0.0,
   "metrics": {
     "fitness": 0.6331427340726022,
