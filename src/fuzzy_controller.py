@@ -2,23 +2,43 @@
 
 Cumple con todas las restricciones de las Partes 1, 2, 3 y 4 de `Parcial 2.pdf`:
 - Uso obligatorio de `skfuzzy` y `skfuzzy.control` (`Antecedent`, `Consequent`, `Rule`,
-  `ControlSystem`, `ControlSystemSimulation`).
+  `ControlSystem`, `ControlSystemSimulation`), y del evaluador `compute_crisp` que
+  reproduce al nivel de máquina ese mismo cómputo.
 - Fase 1 (Baselines): generación de funciones de membresía con `automf(N)` para N in {5, 7, 9}.
 - Fase 2 (Optimizados): construcción con los parámetros decodificados del cromosoma.
 - Medición obligatoria del tiempo de inferencia mediante `time.perf_counter()` sobre
   `controller.compute()` y medición del uso de memoria.
+
+RENDIMIENTO SIN CAMBIAR LA SEMÁNTICA (H-08):
+- En el ciclo del algoritmo genético NO se reconstruye `ControlSystem` ni
+  `ControlSystemSimulation` por individuo: la codificación pasa
+  `build_control_system_graph=False` y el fitness evalúa con `compute_crisp`, que
+  trabaja únicamente con arreglos numpy derivados del cromosoma.
+- NO existe ninguna tabla interpolada de la superficie de control
+  (`build_lookup_control_law` fue eliminada): el enunciado prohíbe "cualquier
+  mecanismo de evaluación simplificada".
+- La defuzzificación de `compute_crisp` replica línea por línea el procedimiento de
+  `CrispValueCalculator.find_memberships` de scikit-fuzzy (universo remuestreado en
+  los puntos de cruce, `np.union1d`, implicación min, agregación max y `defuzz`
+  centroide), de modo que `compute_crisp` y `controller.compute()` coinciden para
+  cualquier entrada interior del universo (verificado por `test_skfuzzy_equivalence`).
+- Solo para la evaluación final (Fase 3) y las mediciones obligatorias de tiempo
+  (`perf_counter` sobre `controller.compute()`, pág. 14 del enunciado) se construye
+  el grafo completo de `skfuzzy.control`.
 """
 
 import sys
 import time
 import tracemalloc
-from typing import Callable, Dict, List, Tuple
+from typing import Dict, List, Tuple
 import numpy as np
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
+from skfuzzy.fuzzymath.fuzzy_ops import _interp_universe_fast, interp_membership
 
 from src.chromosome import create_baseline_chromosome, decode_chromosome
 from src.config import (
+    COVERAGE_GRID_SIZE,
     DERROR_MAX,
     DERROR_MIN,
     ERROR_MAX,
@@ -132,27 +152,65 @@ class MamdaniFuzzyController:
         return (1.0 - frac) * mfs[:, idx] + frac * mfs[:, idx + 1]
 
     def compute_crisp(self, e_val: float, de_val: float) -> float:
-        """Evalúa la inferencia Mamdani exacta (min-max-centroid con skfuzzy.defuzz)."""
+        """Evalúa la inferencia Mamdani exacta (min-max-centroid con skfuzzy.defuzz).
+
+        Replica el procedimiento de `skfuzzy.control.ControlSystemSimulation`:
+        1. min(mu_e[i], mu_de[j]) para cada antecedente,
+        2. max sobre las reglas que comparten consecuente k,
+        3. remuestreo del universo del consecuente en los puntos donde cada MF
+           corta el grado de activación (`_interp_universe_fast`), igual que
+           `CrispValueCalculator.find_memberships` de scikit-fuzzy,
+        4. implicación min, agregación max y defuzzificación centroide.
+
+        Esto garantiza equivalencia de máquina con `controller.compute()` y evita
+        la aproximación de defuzzificar solo sobre la malla uniforme de 1000 puntos.
+
+        Convención de borde: `_interp_mfs` acota la posición de malla a los nodos
+        interiores [1, n_pts-2]; así, cuando e/Δe saturan exactamente en los bordes
+        del universo (saturación de entradas de la simulación), la evaluación no
+        cae en el caso degenerado de scikit-fuzzy (todas las μ = 0 en el vértice
+        exacto del universo -> `EmptyMembershipError`). La equivalencia con
+        `controller.compute()` es exacta para toda entrada interior del universo,
+        que es donde opera la simulación en lazo cerrado (ver
+        `test_skfuzzy_equivalence`).
+        """
         mu_e = self._interp_mfs(e_val, ERROR_MIN, ERROR_MAX, self._e_mfs)
         mu_de = self._interp_mfs(de_val, DERROR_MIN, DERROR_MAX, self._de_mfs)
 
         # Matriz de activación de antecedentes min(mu_e[i], mu_de[j])
         firing_matrix = np.minimum(mu_e[:, None], mu_de[None, :])
 
-        # Agregación de consecuentes (implicación min, agregación max)
-        agg_mf = np.zeros_like(self.voltage_universe)
-        any_fired = False
+        # Grado de activación de cada consecuente k (max sobre sus reglas activas)
+        active_terms = []
         for k, (ii, jj) in enumerate(self._active_pairs_by_cons):
             if len(ii) > 0:
                 deg = float(np.max(firing_matrix[ii, jj]))
                 if deg > 0.0:
-                    any_fired = True
-                    np.maximum(agg_mf, np.minimum(deg, self._v_mfs[k]), out=agg_mf)
+                    active_terms.append((k, deg))
 
-        if not any_fired or np.sum(agg_mf) <= 1e-12:
+        if not active_terms:
             return 0.0
 
-        return float(fuzz.defuzz(self.voltage_universe, agg_mf, "centroid"))
+        # Remuestreo exacto del universo del consecuente (idéntico a skfuzzy.control)
+        new_values = []
+        for k, deg in active_terms:
+            new_values.extend(
+                _interp_universe_fast(
+                    self.voltage_universe, self._v_mfs[k], deg
+                ).tolist()
+            )
+        new_universe = np.union1d(self.voltage_universe, new_values)
+        agg_mf = np.zeros_like(new_universe, dtype=np.float64)
+        for k, deg in active_terms:
+            upsampled_mf = interp_membership(
+                self.voltage_universe, self._v_mfs[k], new_universe
+            )
+            np.maximum(agg_mf, np.minimum(deg, upsampled_mf), out=agg_mf)
+
+        if np.sum(agg_mf) <= 1e-12:
+            return 0.0
+
+        return float(fuzz.defuzz(new_universe, agg_mf, "centroid"))
 
     def compute_with_skfuzzy_sim(self, e_val: float, de_val: float) -> float:
         """Ejecuta directamente `controller.compute()` sobre la instancia de `skfuzzy.control`."""
@@ -170,97 +228,60 @@ class MamdaniFuzzyController:
         except Exception:
             return 0.0
 
-    def build_lookup_control_law(
-        self, grid_size: int = 121
-    ) -> Callable[[float, float], float]:
-        """Precalcula la superficie de control Mamdani sobre una malla fina e interpola bilinealmente.
+    def measure_rule_coverage(self, grid_size: int = COVERAGE_GRID_SIZE) -> Dict[str, float]:
+        """H-13: cobertura de la base de reglas sobre la malla (e, Δe) — SOLO diagnóstico.
 
-        Esto permite evaluar las 4,001 muestras de cada simulación de 200 s durante
-        las 9,000 evaluaciones del algoritmo genético con precisión < 1e-3 V.
+        Calcula la fracción de puntos de la malla (e, Δe) donde NINGUNA regla activa
+        se dispara (todas las activaciones min(mu_e[i], mu_de[j]) con regla activa
+        son nulas). Si ninguna regla dispara, `compute_crisp` devuelve 0.0 V
+        silenciosamente ("zona muerta" del controlador), situación que puede aparecer
+        al suprimir reglas y que no existía en el base line con todas las reglas.
+
+        Detalles de fidelidad:
+        - La interp de membresías replica exactamente el convenio de `_interp_mfs`
+          usado por `compute_crisp` (acote a los nodos interiores [1, n_pts-2]),
+          así que el diagnóstico es coherente con la inferencia usada en el lazo.
+        - Es un DIAGNÓSTICO: la Ec. (12) NO se altera y no hay ninguna penalización
+          asociada. Solo se reporta en el JSON de cada controlador final para que el
+          reporte discuta la completitud de la base de reglas.
         """
         e_grid = np.linspace(ERROR_MIN, ERROR_MAX, grid_size)
         de_grid = np.linspace(DERROR_MIN, DERROR_MAX, grid_size)
 
-        # Evaluar grados de pertenencia en los ejes de la malla
-        mu_e_all = np.zeros((grid_size, self.n_terms), dtype=float)
-        mu_de_all = np.zeros((grid_size, self.n_terms), dtype=float)
-        for idx, x in enumerate(e_grid):
-            mu_e_all[idx] = self._interp_mfs(float(x), ERROR_MIN, ERROR_MAX, self._e_mfs)
-        for jdx, y in enumerate(de_grid):
-            mu_de_all[jdx] = self._interp_mfs(float(y), DERROR_MIN, DERROR_MAX, self._de_mfs)
+        mu_e = self._mfs_on_grid(e_grid, ERROR_MIN, ERROR_MAX, self._e_mfs)   # (N, ge)
+        mu_de = self._mfs_on_grid(de_grid, DERROR_MIN, DERROR_MAX, self._de_mfs)  # (N, gde)
 
-        # Firing tensor: (grid_size, grid_size, n_terms, n_terms)
-        firing = np.minimum(
-            mu_e_all[:, None, :, None], mu_de_all[None, :, None, :]
-        )
+        covered = np.zeros((grid_size, grid_size), dtype=bool)
+        for ii, jj in self._active_pairs_by_cons:
+            if len(ii) == 0:
+                continue
+            # Activación min(mu_e[i], mu_de[j]) por regla: (len(ii), ge, gde)
+            act = np.minimum(mu_e[ii, :, None], mu_de[jj, None, :])
+            covered |= np.any(act > 0.0, axis=0)
 
-        # Grado de activación de cada consecuente k en cada celda de la malla (grid_size, grid_size, n_terms)
-        cons_deg = np.zeros((grid_size, grid_size, self.n_terms), dtype=float)
-        for k, (ii, jj) in enumerate(self._active_pairs_by_cons):
-            if len(ii) > 0:
-                cons_deg[:, :, k] = np.max(firing[:, :, ii, jj], axis=-1)
+        uncovered_fraction = float(1.0 - covered.mean())
+        return {
+            "grid_size": int(grid_size),
+            "covered_fraction": float(covered.mean()),
+            "uncovered_fraction": uncovered_fraction,
+            "uncovered_pct": 100.0 * uncovered_fraction,
+            "num_active_rules": int(self.decoded["num_active_rules"]),
+            "total_possible_rules": int(self.decoded["total_possible_rules"]),
+        }
 
-        # Defuzzificación centroide vectorizada sobre la malla de voltaje
-        v_univ = self.voltage_universe[::4]  # (250,)
-        v_mfs = self._v_mfs[:, ::4]  # (N, 250)
-        surface = np.zeros((grid_size, grid_size), dtype=float)
+    def _mfs_on_grid(
+        self, xs: np.ndarray, u_min: float, u_max: float, mfs: np.ndarray
+    ) -> np.ndarray:
+        """Interpola las N funciones de membresía sobre una malla de puntos, vectorizado.
 
-        for i in range(grid_size):
-            deg_row = cons_deg[i, :, :, None]
-            clipped = np.minimum(deg_row, v_mfs[None, :, :])
-            agg = np.max(clipped, axis=1)
-            num = np.trapezoid(agg * v_univ[None, :], v_univ, axis=1)
-            den = np.trapezoid(agg, v_univ, axis=1)
-            valid = den > 1e-12
-            surface[i, valid] = num[valid] / den[valid]
-
-        e_min = float(ERROR_MIN)
-        de_min = float(DERROR_MIN)
-        inv_e_step = float((grid_size - 1) / (ERROR_MAX - ERROR_MIN))
-        inv_de_step = float((grid_size - 1) / (DERROR_MAX - DERROR_MIN))
-        max_idx = grid_size - 2
-        surf_list = surface.tolist()
-
-        def fast_law(e_val: float, de_val: float) -> float:
-            fe = (e_val - e_min) * inv_e_step
-            fde = (de_val - de_min) * inv_de_step
-            i0 = int(fe)
-            if i0 < 0:
-                i0 = 0
-            elif i0 > max_idx:
-                i0 = max_idx
-            j0 = int(fde)
-            if j0 < 0:
-                j0 = 0
-            elif j0 > max_idx:
-                j0 = max_idx
-
-            we = fe - i0
-            if we < 0.0:
-                we = 0.0
-            elif we > 1.0:
-                we = 1.0
-            wde = fde - j0
-            if wde < 0.0:
-                wde = 0.0
-            elif wde > 1.0:
-                wde = 1.0
-
-            row0 = surf_list[i0]
-            row1 = surf_list[i0 + 1]
-            v00 = row0[j0]
-            v01 = row0[j0 + 1]
-            v10 = row1[j0]
-            v11 = row1[j0 + 1]
-
-            return (
-                (1.0 - we) * (1.0 - wde) * v00
-                + we * (1.0 - wde) * v10
-                + (1.0 - we) * wde * v01
-                + we * wde * v11
-            )
-
-        return fast_law
+        Réplica vectorizada de `_interp_mfs` (mismo convenio de nodos interiores
+        [1, n_pts - 2] que `compute_crisp`) para la malla de diagnóstico.
+        """
+        n_pts = mfs.shape[1]
+        pos = np.clip((xs - u_min) / (u_max - u_min) * (n_pts - 1), 1.0, n_pts - 2.0)
+        idx = np.clip(np.floor(pos).astype(int), 1, n_pts - 2)
+        frac = np.clip(pos - idx, 0.0, 1.0)
+        return (1.0 - frac)[None, :] * mfs[:, idx] + frac[None, :] * mfs[:, idx + 1]
 
     def measure_inference_time_ms(self, n_evals: int = 50) -> float:
         """Mide el tiempo promedio de inferencia en milisegundos usando `time.perf_counter()`

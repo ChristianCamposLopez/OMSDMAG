@@ -25,7 +25,10 @@ from src.plotting_tables import generate_all_figures, summarize_experiments
 from tests.test_verification import (
     test_chromosome_encoding_and_repair,
     test_equations_12_and_13,
+    test_ga_uses_exact_inference,
+    test_lsim_loop_final_consistency,
     test_plant_and_reference,
+    test_rule_coverage_and_saturation,
     test_skfuzzy_equivalence,
 )
 
@@ -60,9 +63,12 @@ def run_all_experiments(force_rerun: bool = False, parallel: bool = True) -> dic
 
     print("\n[1/4] Ejecutando pruebas unitarias de verificación matemática y técnica...")
     test_plant_and_reference()
+    test_lsim_loop_final_consistency()
     test_equations_12_and_13()
     test_chromosome_encoding_and_repair()
     test_skfuzzy_equivalence()
+    test_ga_uses_exact_inference()
+    test_rule_coverage_and_saturation()
 
     print("\n[2/4] Fase 1 Obligatoria: Evaluando Controladores Base (automf, sin GA)...")
     baselines = {}

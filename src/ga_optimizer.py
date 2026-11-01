@@ -4,7 +4,7 @@ Implementa las 5 fases obligatorias de la Parte 3 de `Parcial 2.pdf` (págs. 8-1
 - Fase 1: Evaluación de los tres Controladores Base (5, 7 y 9 términos con `automf`).
 - Fase 2: Optimización mediante `pygad.GA` (mínimo 20 individuos y 30 generaciones).
 - Fase 3: Selección del mejor individuo por configuración usando exclusivamente la Ec. (12).
-- Fase 4: Evaluación cuantitativa del costo computacional (tiempo de optimización,
+- Fase 4: Evaluación cuantitiva del costo computacional (tiempo de optimización,
   tiempo promedio de inferencia con `perf_counter`, número de genes, reglas activas y memoria).
 - Fase 5: Repetibilidad experimental (5 ejecuciones independientes con semillas distintas).
 """
@@ -233,14 +233,12 @@ def run_single_ga_experiment(
             use_automf_baseline=False,
             build_control_system_graph=False,
         )
-        law = ctrl_fast.build_lookup_control_law(grid_size=65)
-
-        # 2. Simular los 200 segundos completos estrictamente con scipy.signal.lsim
-        sim_out = simulator.simulate(law)
+        # 2. Simular los 200 segundos completos estrictamente con scipy.signal.lsim usando inferencia exacta
+        sim_out = simulator.simulate(ctrl_fast.compute_crisp)
 
         # 3, 4 y 5. Calcular métricas de rendimiento (OS en %), penalizaciones q y fitness (Ec. 12 y 13)
         res = evaluate_controller_response(sim_out["t"], sim_out["theta"])
-        fit_val = float(res["fitness"]) - float(ctrl_fast.decoded["repair_penalty"])
+        fit_val = float(res["fitness"])
         fit_val = max(1e-6, fit_val)
 
         eval_cache[key] = fit_val
@@ -306,7 +304,7 @@ def run_single_ga_experiment(
         "memory_mb": memory_mb,
         "fitness_ga_lookup": float(best_fitness_ga),
         "fitness_exact": float(final_metrics["fitness"]),
-        "metrics": final_metrics,
+        "repair_penalty": float(best_ctrl.decoded["repair_penalty"]),
         "num_active_rules": best_ctrl.decoded["num_active_rules"],
         "total_possible_rules": best_ctrl.decoded["total_possible_rules"],
         "active_rules_list": best_ctrl.decoded["active_rules_list"],
