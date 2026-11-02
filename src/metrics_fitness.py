@@ -9,6 +9,9 @@ Referencias:
   * tr y ts se expresan en segundos (s).
   * q (rho) se calcula mediante la Ecuación (13) cuando [min(h), max(h)] <= [min(h0), max(h0)],
     siendo q >= 1.0 un factor de penalización que incrementa el denominador q * tr.
+  * `h` se evalúa por cada ventana de transición (ver `compute_penalty_factor_q`) y
+    h0 cubre siempre los niveles ±1 rad de la referencia; ver la decisión documentada
+    en el docstring de `compute_penalty_factor_q`.
 """
 
 from typing import Dict, Sequence
@@ -37,7 +40,27 @@ def compute_penalty_factor_q(
          This factor prevents rating with a good score all the very short and incorrect
          rise times, when the steady state is reached under the reference value."
 
-        q = (max(h^0) - min(h_i)) / (max(h) - min(h))    (Ec. 13)
+        q = (max(h0) - min(h_i)) / (max(h) - min(h))    (Ec. 13)
+
+    La implementación sigue la Ecuación (13) de forma literal. El piso q >= 1.0 se
+    aplica porque el artículo solo penaliza cuando el recorrido de la respuesta queda
+    contenido en el de la referencia; para recorridos mayores (sobreimpulso) no debe
+    bonificarse el fitness con q < 1.
+
+    DECISIÓN DOCUMENTADA SOBRE h Y h0 (Ec. 13):
+    - `h_i` se toma POR VENTANA de transición: el q de cada ventana [t_start, t_end)
+      penaliza que esa transición concreta alcance el estado estable por debajo de
+      la referencia y dé un tr artificialmente corto. Esta es la situación que el
+      artículo cita como motivación del factor ("prevents rating with a good score
+      all the very short and incorrect rise times, when the steady state is reached
+      under the reference value"); con un único h de toda la simulación ese caso
+      quedaria enmascarado por las demás transiciones.
+    - `h0` de la ventana es el conjunto de niveles de la referencia de esa misma
+      transición: {r_init, r_final} ⊂ {-1, +1} rad, de modo que max(h0) = 1.0 rad en
+      ambas direcciones. Es decir, numéricamente coincide con usar el h0 de TODA la
+      simulación (la referencia global solo toma valores en [-1, +1]) y así la
+      Ec. (13) queda reproducida literalmente contra la referencia del enunciado.
+    - Por tanto: q = (1.0 - min(h_i)) / (max(h_i) - min(h_i)), con piso en 1.0.
     """
     h_max = float(np.max(h))
     h_min = float(np.min(h))
@@ -46,11 +69,8 @@ def compute_penalty_factor_q(
     if denom <= 1e-6:
         return 1e6  # Penalización severa si la respuesta es prácticamente plana
 
-    # Ecuación (13) literal y cobertura pico a pico de la referencia [min(h0), max(h0)]
     q_eq13 = (float(h0_max) - h_min) / denom
-    q_span = (float(h0_max) - float(h0_min)) / denom
-
-    return float(max(abs(q_eq13), q_span, 1.0))
+    return float(max(q_eq13, 1.0))
 
 
 def compute_step_metrics(
@@ -163,19 +183,34 @@ def compute_step_metrics(
     }
 
 
+def _fitness_components(metrics: Dict[str, float]) -> Dict[str, float]:
+    """Calcula las cuatro contribuciones f1..f4 de una transición (Ec. 12).
+
+    tr0 y ts0 se leen directamente de `src.config` y no pueden modificarse,
+    optimizarse ni ajustarse manualmente (restricción de `Parcial 2.pdf`).
+    """
+    f1 = 1.0 / (1.0 + abs(metrics["OS"]))
+    f2 = 1.0 / (1.0 + abs(metrics["SSE"]))
+    f3 = min(1.0, TR0 / max(metrics["q"] * metrics["tr"], 1e-6))
+    f4 = min(1.0, TS0 / max(metrics["ts"], 1e-6))
+    return {"f1": f1, "f2": f2, "f3": f3, "f4": f4}
+
+
 def evaluate_controller_response(
     t: np.ndarray,
     theta: np.ndarray,
     weights: Sequence[float] = FITNESS_WEIGHTS,
-    tr0: float = TR0,
-    ts0: float = TS0,
 ) -> Dict[str, float]:
     """Evalúa las 8 métricas obligatorias de la Tabla 1 y calcula el fitness total (Ec. 12).
 
     NOTA OBLIGATORIA (`Parcial 2.pdf` pág. 7):
     Se descartan las mediciones de la transición inicial de 0 a 1 (t in [0, 50) s).
     - Transición Positiva (-1 -> +1): evaluada en [100, 150) s.
-    - Transición Negativa (+1 -> -1): evaluada en [150, 200] s (y [50, 100) s).
+    - Transición Negativa (+1 -> -1): evaluada en [150, 200] s y [50, 100) s.
+
+    Para el semiciclo negativo se calculan las contribuciones f5..f8 de cada ventana
+    y se promedian las contribuciones (no las métricas), de modo que el fitness sea
+    una media de aptitudes y no una aptitud de métricas promediadas.
     """
     w = np.asarray(weights, dtype=float)
     if len(w) != 8 or not np.isclose(np.sum(w), 1.0, atol=1e-6):
@@ -191,7 +226,7 @@ def evaluate_controller_response(
         r_final=1.0,
     )
 
-    # Evaluación de la Transición Negativa (+1 -> -1) en [150, 200] s y [50, 100) s
+    # Evaluación de las dos transiciones negativas (+1 -> -1) disponibles
     neg_second = compute_step_metrics(
         t,
         theta,
@@ -209,7 +244,19 @@ def evaluate_controller_response(
         r_final=-1.0,
     )
 
-    # Promedio de las transiciones negativas posteriores al descarte de [0, 50) s
+    # Contribuciones de cada ventana negativa y promedio de contribuciones
+    pos_f = _fitness_components(pos)
+    neg_first_f = _fitness_components(neg_first)
+    neg_second_f = _fitness_components(neg_second)
+    neg_f = {
+        key: 0.5 * (neg_first_f[key] + neg_second_f[key])
+        for key in ("f1", "f2", "f3", "f4")
+    }
+
+    f1, f2, f3, f4 = pos_f["f1"], pos_f["f2"], pos_f["f3"], pos_f["f4"]
+    f5, f6, f7, f8 = neg_f["f1"], neg_f["f2"], neg_f["f3"], neg_f["f4"]
+
+    # Métricas negativas promedio (solo para reporte; el fitness promedia f, no métricas)
     neg = {
         "OS": 0.5 * (neg_first["OS"] + neg_second["OS"]),
         "SSE": 0.5 * (neg_first["SSE"] + neg_second["SSE"]),
@@ -218,25 +265,19 @@ def evaluate_controller_response(
         "q": 0.5 * (neg_first["q"] + neg_second["q"]),
     }
 
-    # Contribuciones individuales f1..f8 in [0, 1] según Ecuación (12) (Artículo pág. 10)
-    f1 = 1.0 / (1.0 + abs(pos["OS"]))
-    f2 = 1.0 / (1.0 + abs(pos["SSE"]))
-    f3 = min(1.0, float(tr0) / max(pos["q"] * pos["tr"], 1e-6))
-    f4 = min(1.0, float(ts0) / max(pos["ts"], 1e-6))
-
-    f5 = 1.0 / (1.0 + abs(neg["OS"]))
-    f6 = 1.0 / (1.0 + abs(neg["SSE"]))
-    f7 = min(1.0, float(tr0) / max(neg["q"] * neg["tr"], 1e-6))
-    f8 = min(1.0, float(ts0) / max(neg["ts"], 1e-6))
-
     contributions = np.array([f1, f2, f3, f4, f5, f6, f7, f8], dtype=float)
     fitness = float(np.dot(w, contributions))
 
     # Valor algebraico sin acotar a 1.0 para trazabilidad
-    raw_f3 = float(tr0) / max(pos["q"] * pos["tr"], 1e-6)
-    raw_f4 = float(ts0) / max(pos["ts"], 1e-6)
-    raw_f7 = float(tr0) / max(neg["q"] * neg["tr"], 1e-6)
-    raw_f8 = float(ts0) / max(neg["ts"], 1e-6)
+    raw_f3 = TR0 / max(pos["q"] * pos["tr"], 1e-6)
+    raw_f4 = TS0 / max(pos["ts"], 1e-6)
+    raw_f7 = 0.5 * (
+        TR0 / max(neg_first["q"] * neg_first["tr"], 1e-6)
+        + TR0 / max(neg_second["q"] * neg_second["tr"], 1e-6)
+    )
+    raw_f8 = 0.5 * (
+        TS0 / max(neg_first["ts"], 1e-6) + TS0 / max(neg_second["ts"], 1e-6)
+    )
     fitness_unclipped = float(
         np.dot(w, np.array([f1, f2, raw_f3, raw_f4, f5, f6, raw_f7, raw_f8]))
     )

@@ -58,6 +58,9 @@ LINGUISTIC_LABELS = {
 }
 
 # 6. Configuración mínima obligatoria de PyGAD y repetibilidad (Parcial 2.pdf, págs. 8-9, 14)
+
+# Tamaño de la malla para diagnóstico de cobertura (H-13). Un valor razonable mantiene buen detalle sin ser costoso.
+COVERAGE_GRID_SIZE = 200
 SOL_PER_POP = 20
 NUM_GENERATIONS = 30
 NUM_PARENTS_MATING = 10
@@ -69,4 +72,3 @@ MUTATION_PROBABILITY = 0.15
 
 # 5 semillas aleatorias distintas para las 5 ejecuciones independientes (Fase 5)
 EXPERIMENT_SEEDS = [42, 100, 2026, 777, 999]
-
